@@ -1,0 +1,2 @@
+# ASSETLINK-v1
+AssetLink is a school asset management and QR-enabled repair tracking web app for Philippine public schools under DepEd. Teachers scan QR codes on classroom assets to report damage, which automatically generates repair tickets routed to principals, maintenance staff, barangay officials, and DepEd supervisors. The system replaces manual logbooks and paper forms with a transparent, accountable digital workflow — ensuring classrooms stay well-maintained and repair requests never get lost.
