@@ -4,9 +4,10 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import StatsCard from '../components/StatsCard';
 import StatusBadge from '../components/StatusBadge';
-import { Package, AlertTriangle, Wrench, CheckCircle, Clock, TrendingUp, ArrowRight, Plus, School, BarChart3, Users, ShieldCheck } from 'lucide-react';
+import { Package, AlertTriangle, Wrench, CheckCircle, Clock, TrendingUp, ArrowRight, Plus, School, BarChart3, Users, ShieldCheck, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { format } from 'date-fns';
+import { format, isToday, isAfter, parseISO } from 'date-fns';
+import { getSLAStatus } from '@/lib/slaUtils';
 
 export default function Dashboard() {
     const { currentUser } = useAuth();
@@ -61,6 +62,12 @@ export default function Dashboard() {
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Principal Dashboard</h1>
                         <p className="text-muted-foreground mt-1">Review and prioritize repair requests for your school.</p>
+                        {requests.filter(r => r.scheduled_start_date && isToday(parseISO(r.scheduled_start_date)) && r.status === 'Approved').length > 0 && (
+                            <div className="mt-3 bg-teal-50 border border-teal-200 rounded-xl px-4 py-2 text-sm text-teal-700 flex items-center gap-2 w-fit">
+                                <CalendarDays className="w-4 h-4" />
+                                <span>{requests.filter(r => r.scheduled_start_date && isToday(parseISO(r.scheduled_start_date)) && r.status === 'Approved').length} repairs scheduled to start today.</span>
+                            </div>
+                        )}
                     </div>
                     <Link to="/repair-requests">
                         <Button className="bg-teal hover:bg-teal/90 text-white gap-2"><AlertTriangle className="w-4 h-4" /> Review Requests</Button>
@@ -132,6 +139,12 @@ export default function Dashboard() {
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">My Workboard</h1>
                         <p className="text-muted-foreground mt-1">Hello {currentUser?.full_name?.split(' ')[0]} — here are your assigned tasks.</p>
+                        {myTasks.filter(t => getSLAStatus(t) === 'overdue' && t.status !== 'Completed').length > 0 && (
+                            <div className="mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2 text-sm text-red-700 flex items-center gap-2 w-fit">
+                                <AlertTriangle className="w-4 h-4" />
+                                <span>Critical: {myTasks.filter(t => getSLAStatus(t) === 'overdue' && t.status !== 'Completed').length} tasks are past the SLA deadline!</span>
+                            </div>
+                        )}
                     </div>
                     <Link to="/tasks">
                         <Button className="bg-teal hover:bg-teal/90 text-white gap-2"><Wrench className="w-4 h-4" /> View All Tasks</Button>
