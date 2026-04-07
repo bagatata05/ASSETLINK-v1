@@ -14,7 +14,7 @@ AssetLink is a school asset management and QR-enabled repair tracking web app fo
 
 1. **Clone & Install**
 ```bash
-git clone <repo-url>
+git clone https://github.com/bagatata05/ASSETLINK-v1
 cd ASSETLINK-v1
 npm install
 ```
