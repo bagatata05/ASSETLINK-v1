@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import StatusBadge from '../components/StatusBadge';
-import { ChevronLeft, ChevronRight, CalendarDays, Wrench, AlertTriangle, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Wrench, AlertTriangle, Clock, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isToday, isBefore, parseISO, startOfDay } from 'date-fns';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext';
 
 const PRIORITY_COLORS = {
     Critical: 'bg-red-100 border-red-300 text-red-800',
@@ -29,6 +30,10 @@ const WORKLOAD_LABEL = (count) => {
 };
 
 export default function MaintenanceCalendar() {
+    const { currentUser } = useAuth();
+    const role = currentUser?.role || 'teacher';
+    const canEdit = role === 'maintenance';
+    
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -75,6 +80,16 @@ export default function MaintenanceCalendar() {
     }
 
     async function onDragEnd(result) {
+        // FRONTEND: Only maintenance staff can edit. This prevents UI accidents.
+        // BACKEND: MUST enforce this server-side on MaintenanceTask.update() endpoint.
+        //   - Verify user role === 'maintenance'
+        //   - If not, return 403 Forbidden
+        //   - Log unauthorized attempts for audit trail
+        if (!canEdit) {
+            toast.error('Only Maintenance staff can reschedule tasks');
+            return;
+        }
+
         const { source, destination, draggableId } = result;
         if (!destination || (source.droppableId === destination.droppableId && source.index === destination.index)) return;
 
@@ -107,11 +122,19 @@ export default function MaintenanceCalendar() {
 
     return (
         <div className="space-y-6">
+            {/* Read-only banner for non-maintenance users */}
+            {!canEdit && (
+                <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                    <Lock className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    <span className="text-sm text-blue-700"><strong>View Only</strong> — Only Maintenance staff can reschedule tasks. You can view the calendar and see updates made by maintenance.</span>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-foreground">Maintenance Calendar</h1>
-                    <p className="text-muted-foreground text-sm mt-1">Drag tasks between days to reschedule. Color indicates workload.</p>
+                    <p className="text-muted-foreground text-sm mt-1">{canEdit ? 'Drag tasks between days to reschedule. Color indicates workload.' : 'View the maintenance schedule and workload.'}</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" onClick={() => setWeekStart(w => subWeeks(w, 1))}><ChevronLeft className="w-4 h-4" /></Button>
@@ -165,21 +188,21 @@ export default function MaintenanceCalendar() {
                                     )}
                                 </div>
                                 {/* Droppable area */}
-                                <Droppable droppableId={key}>
+                                <Droppable droppableId={key} isDropDisabled={!canEdit}>
                                     {(provided, snapshot) => (
                                         <div
                                             ref={provided.innerRef}
                                             {...provided.droppableProps}
-                                            className={`flex-1 p-2 space-y-2 rounded-b-2xl transition-colors min-h-[120px] ${snapshot.isDraggingOver ? 'bg-teal/10 ring-2 ring-inset ring-teal/30' : ''}`}
+                                            className={`flex-1 p-2 space-y-2 rounded-b-2xl transition-colors min-h-[120px] ${snapshot.isDraggingOver && canEdit ? 'bg-teal/10 ring-2 ring-inset ring-teal/30' : ''}`}
                                         >
                                             {dayTasks.map((task, idx) => (
-                                                <Draggable key={task.id} draggableId={task.id} index={idx}>
+                                                <Draggable key={task.id} draggableId={task.id} index={idx} isDragDisabled={!canEdit}>
                                                     {(prov, snap) => (
                                                         <div
                                                             ref={prov.innerRef}
                                                             {...prov.draggableProps}
-                                                            {...prov.dragHandleProps}
-                                                            className={`text-xs p-2 rounded-lg border cursor-grab active:cursor-grabbing select-none transition-shadow ${PRIORITY_COLORS[task.priority || 'Medium']} ${snap.isDragging ? 'shadow-lg rotate-1 opacity-90' : 'hover:shadow-sm'}`}
+                                                            {...(canEdit ? prov.dragHandleProps : {})}
+                                                            className={`text-xs p-2 rounded-lg border transition-shadow ${PRIORITY_COLORS[task.priority || 'Medium']} ${canEdit ? 'cursor-grab active:cursor-grabbing select-none' : 'cursor-default'} ${snap.isDragging ? 'shadow-lg rotate-1 opacity-90' : 'hover:shadow-sm'}`}
                                                         >
                                                             <p className="font-semibold truncate">{task.asset_name}</p>
                                                             <p className="opacity-70 truncate mt-0.5">{task.school_name}</p>
@@ -192,7 +215,7 @@ export default function MaintenanceCalendar() {
                                             ))}
                                             {provided.placeholder}
                                             {dayTasks.length === 0 && !snapshot.isDraggingOver && (
-                                                <p className="text-xs text-muted-foreground/40 text-center pt-4">Drop here</p>
+                                                <p className="text-xs text-muted-foreground/40 text-center pt-4">{canEdit ? 'Drop here' : '—'}</p>
                                             )}
                                         </div>
                                     )}
@@ -209,24 +232,24 @@ export default function MaintenanceCalendar() {
                         <h2 className="text-sm font-semibold text-foreground">Unscheduled Tasks</h2>
                         <span className="ml-auto text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{unscheduled.length}</span>
                     </div>
-                    <Droppable droppableId="unscheduled" direction="horizontal">
+                    <Droppable droppableId="unscheduled" direction="horizontal" isDropDisabled={!canEdit}>
                         {(provided, snapshot) => (
                             <div
                                 ref={provided.innerRef}
                                 {...provided.droppableProps}
-                                className={`flex flex-wrap gap-3 p-4 min-h-[80px] rounded-b-2xl transition-colors ${snapshot.isDraggingOver ? 'bg-teal/5 ring-2 ring-inset ring-teal/20' : ''}`}
+                                className={`flex flex-wrap gap-3 p-4 min-h-[80px] rounded-b-2xl transition-colors ${snapshot.isDraggingOver && canEdit ? 'bg-teal/5 ring-2 ring-inset ring-teal/20' : ''}`}
                             >
                                 {unscheduled.length === 0 && !snapshot.isDraggingOver && (
                                     <p className="text-sm text-muted-foreground/50 py-2">All tasks are scheduled 🎉</p>
                                 )}
                                 {unscheduled.map((task, idx) => (
-                                    <Draggable key={task.id} draggableId={task.id} index={idx}>
+                                    <Draggable key={task.id} draggableId={task.id} index={idx} isDragDisabled={!canEdit}>
                                         {(prov, snap) => (
                                             <div
                                                 ref={prov.innerRef}
                                                 {...prov.draggableProps}
-                                                {...prov.dragHandleProps}
-                                                className={`text-xs p-2.5 rounded-xl border cursor-grab active:cursor-grabbing select-none w-44 ${PRIORITY_COLORS[task.priority || 'Medium']} ${snap.isDragging ? 'shadow-lg rotate-1 opacity-90' : 'hover:shadow-sm'}`}
+                                                {...(canEdit ? prov.dragHandleProps : {})}
+                                                className={`text-xs p-2.5 rounded-xl border w-44 ${PRIORITY_COLORS[task.priority || 'Medium']} ${canEdit ? 'cursor-grab active:cursor-grabbing select-none' : 'cursor-default'} ${snap.isDragging ? 'shadow-lg rotate-1 opacity-90' : 'hover:shadow-sm'}`}
                                             >
                                                 <p className="font-semibold truncate">{task.asset_name}</p>
                                                 <p className="opacity-70 truncate mt-0.5">{task.school_name}</p>
