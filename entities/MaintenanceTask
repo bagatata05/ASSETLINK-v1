@@ -33,9 +33,28 @@
         "Assigned",
         "In Progress",
         "On Hold",
-        "Completed"
+        "Completed",
+        "Pending Teacher Verification"
       ],
       "default": "Assigned"
+    },
+    "teacher_confirmation": {
+      "type": "boolean",
+      "title": "Teacher Confirmed Completion",
+      "default": false
+    },
+    "teacher_verification_notes": {
+      "type": "string",
+      "title": "Teacher Verification Notes (if rejected)"
+    },
+    "verified_by_email": {
+      "type": "string",
+      "title": "Verified By (Teacher Email)"
+    },
+    "verified_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Verification Date"
     },
     "priority": {
       "type": "string",

@@ -46,6 +46,12 @@ function ensureSeeded() {
 ensureSeeded();
 
 // ── Mock Entity Handler ──────────────────────────────────────────────
+// BACKEND: This mock handler implements basic CRUD. Backend should add:
+//   1. Input validation (required fields, type checking, enums)
+//   2. Permission checks (role-based authorization per entity/action)
+//   3. Audit logging (who, what, when)
+//   4. Status transition validation (prevent invalid state changes)
+//   5. Relationship integrity (e.g., task can only reference valid repair request)
 function createMockEntityHandler(entityName) {
     return {
         async list(sort, limit) {
