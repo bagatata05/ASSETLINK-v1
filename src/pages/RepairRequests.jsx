@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, addHours, parseISO } from 'date-fns';
+import { calculateDeadline, SLA_HOURS } from '@/lib/slaUtils';
 
 const STATUSES = ['Pending', 'Approved', 'In Progress', 'Completed', 'Rejected', 'Escalated'];
 
@@ -26,6 +27,7 @@ export default function RepairRequests() {
     const [notes, setNotes] = useState('');
     const [assignedTo, setAssignedTo] = useState('');
     const [verificationFeedback, setVerificationFeedback] = useState('');
+    const [scheduledStartDate, setScheduledStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [saving, setSaving] = useState(false);
 
     useEffect(() => { loadRequests(); }, []);
@@ -77,10 +79,15 @@ export default function RepairRequests() {
     }
 
     async function handleAssign() {
+        const slaDeadline = calculateDeadline(scheduledStartDate, selected.priority);
+        
         await updateStatus(selected.id, 'In Progress', {
             assigned_to_name: assignedTo,
             assigned_to_email: assignedTo,
+            scheduled_start_date: scheduledStartDate,
+            sla_deadline: slaDeadline.toISOString(),
         });
+        
         // Create maintenance task
         await base44.entities.MaintenanceTask.create({
             repair_request_id: selected.id,
@@ -91,6 +98,10 @@ export default function RepairRequests() {
             assigned_to_name: assignedTo,
             priority: selected.priority,
             status: 'Assigned',
+            scheduled_start_date: scheduledStartDate,
+            start_date: scheduledStartDate, // Initially same as scheduled
+            sla_deadline: slaDeadline.toISOString(),
+            reschedule_count: 0
         });
     }
 
@@ -288,11 +299,33 @@ export default function RepairRequests() {
                                     </div>
                                 )}
                                 {(role === 'principal' || role === 'admin') && selected.status === 'Approved' && (
-                                    <div className="space-y-2">
-                                        <Label className="text-xs">Assign To Maintenance</Label>
-                                        <Input value={assignedTo} onChange={e => setAssignedTo(e.target.value)} placeholder="Maintenance staff name or email" />
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs">Assign To Maintenance</Label>
+                                                <Input value={assignedTo} onChange={e => setAssignedTo(e.target.value)} placeholder="Name or email" />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs">Target Start Date</Label>
+                                                <Input type="date" value={scheduledStartDate} onChange={e => setScheduledStartDate(e.target.value)} />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs">
+                                            <div className="flex justify-between mb-1">
+                                                <span className="text-muted-foreground">SLA Duration ({selected.priority})</span>
+                                                <span className="font-medium text-foreground">{SLA_HOURS[selected.priority]} Hours</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Deadline to Complete</span>
+                                                <span className="font-semibold text-teal">
+                                                    {format(calculateDeadline(scheduledStartDate, selected.priority), 'MMM d, h:mm a')}
+                                                </span>
+                                            </div>
+                                        </div>
+
                                         <Button onClick={handleAssign} disabled={saving || !assignedTo} className="w-full bg-teal hover:bg-teal/90 text-white text-sm">
-                                            <Wrench className="w-4 h-4 mr-1" /> Assign & Start
+                                            <Wrench className="w-4 h-4 mr-1" /> Assign & Start Repair
                                         </Button>
                                     </div>
                                 )}
@@ -313,7 +346,7 @@ export default function RepairRequests() {
                                         </div>
                                     </div>
                                 )}
-                                {(role === 'principal' || role === 'admin') && !['Escalated', 'Completed', 'Rejected'].includes(selected.status) && (
+                                {(role === 'principal' || role === 'admin' || role === 'supervisor') && !['Escalated', 'Completed', 'Rejected'].includes(selected.status) && (
                                     <div className="space-y-2">
                                         <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Escalation reason..." rows={2} />
                                         <Button onClick={handleEscalate} variant="outline" disabled={saving} className="w-full border-purple-200 text-purple-600 hover:bg-purple-50 text-sm">
