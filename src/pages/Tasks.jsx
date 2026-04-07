@@ -12,7 +12,8 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
-const TASK_STATUSES = ['Assigned', 'In Progress', 'On Hold', 'Completed'];
+// BACKEND: Validate task status transitions server-side to prevent invalid state changes
+const TASK_STATUSES = ['Assigned', 'In Progress', 'On Hold', 'Completed', 'Pending Teacher Verification'];
 
 export default function Tasks() {
     const { currentUser } = useAuth();
@@ -51,32 +52,29 @@ export default function Tasks() {
         };
         if (form.status === 'Completed') {
             updateData.completed_date = new Date().toISOString().split('T')[0];
+            // BACKEND: When setting Completed, actually set to "Pending Teacher Verification"
+            // Teacher must verify repair is satisfactory before final closure
+            updateData.status = 'Pending Teacher Verification';
         }
         if (selected.repair_request_id) {
             // Update repair request with maintenance notes
             const repairUpdate = { maintenance_notes: form.notes };
-            if (form.status === 'Completed') repairUpdate.status = 'In Progress'; // awaiting teacher confirmation
+            // Keep repair request in "In Progress" state until teacher verifies
             await base44.entities.RepairRequest.update(selected.repair_request_id, repairUpdate);
 
             // Notify the teacher who filed the request
             const allRequests = await base44.entities.RepairRequest.list('-created_date', 500);
             const repairReq = allRequests.find(r => r.id === selected.repair_request_id);
             if (repairReq?.reported_by_email) {
-                const isComplete = form.status === 'Completed';
                 await base44.integrations.Core.SendEmail({
                     to: repairReq.reported_by_email,
-                    subject: isComplete
-                        ? `✅ Repair Completed — ${selected.asset_name}`
-                        : `🔧 Repair Update — ${selected.asset_name} [${form.status}]`,
-                    body: `Dear ${repairReq.reported_by_name || 'Teacher'},\n\n${isComplete
-                            ? `The repair work on "${selected.asset_name}" has been COMPLETED by our maintenance staff. Please inspect the asset and confirm completion in AssetLink.`
-                            : `The maintenance status for "${selected.asset_name}" has been updated to: ${form.status}.`
-                        }\n\n📋 Request #: ${selected.request_number || selected.repair_request_id}\n🏫 School: ${selected.school_name}\n🔧 Asset: ${selected.asset_name}${form.notes ? `\n\n📝 Maintenance Notes:\n${form.notes}` : ''}${form.materials_used ? `\n🛠 Materials Used: ${form.materials_used}` : ''}\n\n${isComplete ? 'Please log in to AssetLink to confirm the repair is satisfactory.' : 'Log in to AssetLink to view full details.'}\n\n— AssetLink Notification System`,
+                    subject: `✅ Repair Ready for Verification — ${selected.asset_name}`,
+                    body: `Dear ${repairReq.reported_by_name || 'Teacher'},\n\nThe maintenance work on "${selected.asset_name}" has been COMPLETED and is ready for your verification.\n\n📋 Request #: ${selected.request_number || selected.repair_request_id}\n🏫 School: ${selected.school_name}\n🔧 Asset: ${selected.asset_name}${form.notes ? `\n\n📝 Maintenance Notes:\n${form.notes}` : ''}${form.materials_used ? `\n🛠 Materials Used: ${form.materials_used}` : ''}\n\nPlease inspect the asset and confirm whether the repair is satisfactory in AssetLink.\n\n— AssetLink Notification System`,
                 });
             }
         }
         await base44.entities.MaintenanceTask.update(selected.id, updateData);
-        toast.success('Task updated successfully');
+        toast.success('Task updated. Awaiting teacher verification.');
         setSaving(false);
         setSelected(null);
         loadTasks();
