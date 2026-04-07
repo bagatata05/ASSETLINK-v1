@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import {
     LayoutDashboard, Package, AlertTriangle, Wrench, BarChart3,
-    School, Menu, X, Bell, LogOut, ChevronRight, Shield, CalendarDays
+    School, Menu, X, Bell, LogOut, ChevronRight, Shield, CalendarDays, ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { base44 } from '@/api/base44Client';
@@ -17,6 +17,7 @@ const navItems = [
     { path: '/analytics', label: 'Analytics', icon: BarChart3, roles: ['admin', 'principal', 'supervisor'] },
     { path: '/schools', label: 'Schools', icon: School, roles: ['admin', 'supervisor'] },
     { path: '/calendar', label: 'Calendar', icon: CalendarDays, roles: ['admin', 'maintenance', 'principal', 'supervisor'] },
+    { path: '/supervisor-oversight', label: 'Oversight', icon: ShieldAlert, roles: ['admin', 'supervisor'] },
 ];
 
 export default function Layout() {
