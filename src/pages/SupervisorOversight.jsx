@@ -1,9 +1,10 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
-import { AlertTriangle, TrendingUp, ShieldAlert, MapPin } from 'lucide-react';
+import { AlertTriangle, TrendingUp, ShieldAlert, MapPin, Clock, CalendarDays } from 'lucide-react';
+import { isBefore, parseISO, isAfter } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '../components/StatusBadge';
 import StatsCard from '../components/StatsCard';
@@ -15,18 +16,21 @@ export default function SupervisorOversight() {
     const { currentUser } = useAuth();
     const role = currentUser?.role || 'supervisor';
     const [requests, setRequests] = useState([]);
+    const [tasks, setTasks] = useState([]);
     const [schools, setSchools] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filterSchool, setFilterSchool] = useState('all');
 
     useEffect(() => {
         async function load() {
-            const [r, s] = await Promise.all([
+            const [r, s, t] = await Promise.all([
                 base44.entities.RepairRequest.list('-created_date', 1000),
                 base44.entities.School.list('-created_date', 100),
+                base44.entities.MaintenanceTask.list('-created_date', 1000),
             ]);
             setRequests(r || []);
             setSchools(s || []);
+            setTasks(t || []);
             setLoading(false);
         }
         load();
@@ -41,14 +45,23 @@ export default function SupervisorOversight() {
     const escalatedRequests = filtered.filter(r => r.status === 'Escalated');
 
     // Repairs per school
-    const schoolMetrics = schools.map(school => ({
-        name: school.name,
-        pending: requests.filter(r => r.school_name === school.name && r.status === 'Pending').length,
-        approved: requests.filter(r => r.school_name === school.name && r.status === 'Approved').length,
-        inProgress: requests.filter(r => r.school_name === school.name && r.status === 'In Progress').length,
-        completed: requests.filter(r => r.school_name === school.name && r.status === 'Completed').length,
-        escalated: requests.filter(r => r.school_name === school.name && r.status === 'Escalated').length,
-    }));
+    const schoolMetrics = schools.map(school => {
+        const schoolRequests = requests.filter(r => r.school_name === school.name);
+        const schoolTasks = tasks.filter(t => t.school_name === school.name);
+        const completedOnTime = schoolTasks.filter(t => t.status === 'Completed' && t.completion_date && t.sla_deadline && !isAfter(parseISO(t.completion_date), parseISO(t.sla_deadline))).length;
+        const totalCompleted = schoolTasks.filter(t => t.status === 'Completed').length;
+        
+        return {
+            name: school.name,
+            pending: schoolRequests.filter(r => r.status === 'Pending').length,
+            approved: schoolRequests.filter(r => r.status === 'Approved').length,
+            inProgress: schoolRequests.filter(r => r.status === 'In Progress').length,
+            completed: totalCompleted,
+            escalated: schoolRequests.filter(r => r.status === 'Escalated').length,
+            onTimeRate: totalCompleted > 0 ? Math.round((completedOnTime / totalCompleted) * 100) : 0,
+            avgReschedule: schoolTasks.length > 0 ? (schoolTasks.reduce((sum, t) => sum + (t.reschedule_count || 0), 0) / schoolTasks.length).toFixed(1) : 0
+        };
+    });
 
     // Cost tracking by school (actual_cost from tasks)
     const schoolCosts = schools.map(school => {
@@ -110,9 +123,18 @@ export default function SupervisorOversight() {
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatsCard title="Total Repairs" value={stats.total} icon={AlertTriangle} color="text-blue-600 bg-blue-100" />
+                <StatsCard title="On-Time Delivery" value={(() => {
+                    const completedTasks = tasks.filter(t => t.status === 'Completed' && t.completion_date && t.sla_deadline);
+                    if (completedTasks.length === 0) return '0%';
+                    const onTimeCount = completedTasks.filter(t => !isAfter(parseISO(t.completion_date), parseISO(t.sla_deadline))).length;
+                    return Math.round((onTimeCount / completedTasks.length) * 100) + '%';
+                })()} icon={Clock} color="text-teal-600 bg-teal-100" />
+                <StatsCard title="Avg Reschedules" value={(() => {
+                    if (tasks.length === 0) return '0.0';
+                    const avg = tasks.reduce((sum, t) => sum + (t.reschedule_count || 0), 0) / tasks.length;
+                    return avg.toFixed(1);
+                })()} icon={CalendarDays} color="text-amber-600 bg-amber-100" />
                 <StatsCard title="Escalated" value={stats.escalated} icon={ShieldAlert} color="text-red-600 bg-red-100" />
-                <StatsCard title="Avg Resolution" value={stats.avgResolutionTime + 'd'} icon={TrendingUp} color="text-emerald-600 bg-emerald-100" />
                 <StatsCard title="Critical Open" value={stats.criticalCount} icon={AlertTriangle} color="text-orange-600 bg-orange-100" />
             </div>
 
@@ -154,20 +176,16 @@ export default function SupervisorOversight() {
                     </ResponsiveContainer>
                 </div>
 
-                {/* School Metrics */}
+                {/* On-Time Performance by School */}
                 <div className="bg-card rounded-2xl border border-border p-6 lg:col-span-2">
-                    <h3 className="font-semibold text-foreground mb-4">Repairs per School</h3>
+                    <h3 className="font-semibold text-foreground mb-4">On-Time Performance (%)</h3>
                     <ResponsiveContainer width="100%" height={250}>
                         <BarChart data={schoolMetrics.slice(0, 6)}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" fontSize={12} />
-                            <YAxis />
+                            <XAxis dataKey="name" fontSize={10} interval={0} />
+                            <YAxis domain={[0, 100]} />
                             <Tooltip />
-                            <Legend />
-                            <Bar dataKey="pending" stackId="a" fill="#3b82f6" />
-                            <Bar dataKey="approved" stackId="a" fill="#f59e0b" />
-                            <Bar dataKey="inProgress" stackId="a" fill="#8b5cf6" />
-                            <Bar dataKey="completed" stackId="a" fill="#10b981" />
+                            <Bar dataKey="onTimeRate" name="On-Time %" fill="#0d9488" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
