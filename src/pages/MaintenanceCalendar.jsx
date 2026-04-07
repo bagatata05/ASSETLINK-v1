@@ -4,9 +4,13 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import StatusBadge from '../components/StatusBadge';
 import { ChevronLeft, ChevronRight, CalendarDays, Wrench, AlertTriangle, Clock, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { format, startOfWeek, addDays, addWeeks, subWeeks, isToday, isBefore, parseISO, startOfDay } from 'date-fns';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { format, startOfWeek, addDays, addWeeks, subWeeks, isToday, isBefore, isAfter, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { useAuth } from '@/lib/AuthContext';
+import { getSLAStatus, getSLAColorClass } from '@/lib/slaUtils';
 
 const PRIORITY_COLORS = {
     Critical: 'bg-red-100 border-red-300 text-red-800',
@@ -39,6 +43,9 @@ export default function MaintenanceCalendar() {
     const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
     const [tasksByDay, setTasksByDay] = useState({});
     const [unscheduled, setUnscheduled] = useState([]);
+    const [pendingReschedule, setPendingReschedule] = useState(null);
+    const [rescheduleReason, setRescheduleReason] = useState('');
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => { loadTasks(); }, []);
 
@@ -80,11 +87,6 @@ export default function MaintenanceCalendar() {
     }
 
     async function onDragEnd(result) {
-        // FRONTEND: Only maintenance staff can edit. This prevents UI accidents.
-        // BACKEND: MUST enforce this server-side on MaintenanceTask.update() endpoint.
-        //   - Verify user role === 'maintenance'
-        //   - If not, return 403 Forbidden
-        //   - Log unauthorized attempts for audit trail
         if (!canEdit) {
             toast.error('Only Maintenance staff can reschedule tasks');
             return;
@@ -94,20 +96,75 @@ export default function MaintenanceCalendar() {
         if (!destination || (source.droppableId === destination.droppableId && source.index === destination.index)) return;
 
         const taskId = draggableId;
-        const destDate = destination.droppableId === 'unscheduled' ? null : destination.droppableId;
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
 
+        const destDate = destination.droppableId === 'unscheduled' ? null : destination.droppableId;
+        
+        // SLA CHECK: If moving to a date, check if it's past SLA
+        if (destDate && task.sla_deadline) {
+            const newDateEnd = endOfDay(parseISO(destDate));
+            const deadline = parseISO(task.sla_deadline);
+            
+            if (isAfter(newDateEnd, deadline)) {
+                // Past SLA! Need reason.
+                setPendingReschedule({ taskId, destDate });
+                setRescheduleReason('');
+                return;
+            }
+        }
+
+        await performUpdate(taskId, destDate);
+    }
+
+    async function performUpdate(taskId, destDate, reason = '') {
+        setSaving(true);
         // Optimistic update
         const allTasks = [...tasks];
         const taskIdx = allTasks.findIndex(t => t.id === taskId);
         if (taskIdx === -1) return;
-        const task = { ...allTasks[taskIdx], start_date: destDate || null };
-        allTasks[taskIdx] = task;
+        
+        const oldTask = allTasks[taskIdx];
+        const updatedTask = { 
+            ...oldTask, 
+            start_date: destDate || null,
+            reschedule_notes: reason ? (oldTask.reschedule_notes ? oldTask.reschedule_notes + '\n' : '') + reason : oldTask.reschedule_notes,
+            reschedule_count: reason ? (oldTask.reschedule_count || 0) + 1 : (oldTask.reschedule_count || 0)
+        };
+        
+        allTasks[taskIdx] = updatedTask;
         setTasks(allTasks);
         distribute(allTasks);
 
-        // Persist
-        await base44.entities.MaintenanceTask.update(taskId, { start_date: destDate || null });
-        toast.success(destDate ? `Task rescheduled to ${format(parseISO(destDate), 'EEE, MMM d')}` : 'Task moved to unscheduled');
+        try {
+            const updatePayload = { 
+                start_date: destDate || null 
+            };
+            
+            if (reason) {
+                updatePayload.reschedule_notes = updatedTask.reschedule_notes;
+                updatePayload.reschedule_count = updatedTask.reschedule_count;
+                
+                // NOTIFY PRINCIPAL
+                const repairReq = await base44.entities.RepairRequest.get(updatedTask.repair_request_id);
+                if (repairReq?.reported_by_email) {
+                    await base44.integrations.Core.SendEmail({
+                        to: repairReq.reported_by_email,
+                        subject: `📅 Task Rescheduled Past SLA — ${updatedTask.asset_name}`,
+                        body: `Dear Principal,\n\nThe maintenance task for "${updatedTask.asset_name}" has been rescheduled past the initial SLA deadline.\n\n🛠️ Task: ${updatedTask.asset_name}\n🏫 School: ${updatedTask.school_name}\n📅 New Schedule: ${format(parseISO(destDate), 'PPPP')}\n⚠️ Deadline was: ${format(parseISO(updatedTask.sla_deadline), 'PPPP')}\n\n📝 Reason Provided:\n"${reason}"\n\nReschedule Count: ${updatedTask.reschedule_count}\n\n— AssetLink Monitoring`,
+                    });
+                }
+            }
+
+            await base44.entities.MaintenanceTask.update(taskId, updatePayload);
+            toast.success(destDate ? `Task scheduled for ${format(parseISO(destDate), 'EEE, MMM d')}` : 'Task moved to unscheduled');
+        } catch (err) {
+            toast.error('Failed to update task');
+            loadTasks(); // Rollback
+        } finally {
+            setSaving(false);
+            setPendingReschedule(null);
+        }
     }
 
     const today = startOfDay(new Date());
@@ -197,20 +254,33 @@ export default function MaintenanceCalendar() {
                                         >
                                             {dayTasks.map((task, idx) => (
                                                 <Draggable key={task.id} draggableId={task.id} index={idx} isDragDisabled={!canEdit}>
-                                                    {(prov, snap) => (
-                                                        <div
-                                                            ref={prov.innerRef}
-                                                            {...prov.draggableProps}
-                                                            {...(canEdit ? prov.dragHandleProps : {})}
-                                                            className={`text-xs p-2 rounded-lg border transition-shadow ${PRIORITY_COLORS[task.priority || 'Medium']} ${canEdit ? 'cursor-grab active:cursor-grabbing select-none' : 'cursor-default'} ${snap.isDragging ? 'shadow-lg rotate-1 opacity-90' : 'hover:shadow-sm'}`}
-                                                        >
-                                                            <p className="font-semibold truncate">{task.asset_name}</p>
-                                                            <p className="opacity-70 truncate mt-0.5">{task.school_name}</p>
-                                                            <div className="flex items-center gap-1 mt-1.5">
-                                                                <StatusBadge status={task.status} />
+                                                    {(prov, snap) => {
+                                                        const slaStatus = getSLAStatus(task);
+                                                        const slaClasses = getSLAColorClass(slaStatus);
+                                                        return (
+                                                            <div
+                                                                ref={prov.innerRef}
+                                                                {...prov.draggableProps}
+                                                                {...(canEdit ? prov.dragHandleProps : {})}
+                                                                className={`text-xs p-2 rounded-lg border-2 transition-shadow ${slaClasses} ${canEdit ? 'cursor-grab active:cursor-grabbing select-none' : 'cursor-default'} ${snap.isDragging ? 'shadow-lg rotate-1 opacity-90' : 'hover:shadow-sm'}`}
+                                                            >
+                                                                <div className="flex justify-between items-start mb-1">
+                                                                    <p className="font-bold truncate pr-1">{task.asset_name}</p>
+                                                                    {task.reschedule_count > 0 && <span className="flex-shrink-0 bg-white/50 px-1 rounded text-[10px] font-bold">R{task.reschedule_count}</span>}
+                                                                </div>
+                                                                <p className="opacity-70 truncate text-[10px] mb-1.5">{task.school_name}</p>
+                                                                <div className="flex items-center justify-between gap-1">
+                                                                    <StatusBadge status={task.priority || 'Medium'} size="xs" />
+                                                                    {task.sla_deadline && (
+                                                                        <div className={`flex items-center gap-0.5 text-[10px] font-medium ${slaStatus === 'overdue' ? 'text-red-700' : 'text-muted-foreground'}`}>
+                                                                            <Clock className="w-2.5 h-2.5" />
+                                                                            {format(parseISO(task.sla_deadline), 'MM/dd')}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                        );
+                                                    }}
                                                 </Draggable>
                                             ))}
                                             {provided.placeholder}
