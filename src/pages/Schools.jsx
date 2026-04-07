@@ -6,8 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function Schools() {
+    const { currentUser } = useAuth();
+    const role = currentUser?.role || 'teacher';
     const [schools, setSchools] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -63,9 +66,11 @@ export default function Schools() {
                     <h1 className="text-2xl font-bold text-foreground">Schools</h1>
                     <p className="text-muted-foreground text-sm mt-1">Manage registered schools in the system</p>
                 </div>
-                <Button onClick={openCreate} className="bg-teal hover:bg-teal/90 text-white gap-2">
-                    <Plus className="w-4 h-4" /> Add School
-                </Button>
+                {role === 'admin' && (
+                    <Button onClick={openCreate} className="bg-teal hover:bg-teal/90 text-white gap-2">
+                        <Plus className="w-4 h-4" /> Add School
+                    </Button>
+                )}
             </div>
 
             {loading ? (
@@ -74,7 +79,7 @@ export default function Schools() {
                 <div className="text-center py-16 text-muted-foreground bg-card rounded-2xl border border-border">
                     <School className="w-12 h-12 mx-auto mb-3 opacity-30" />
                     <p>No schools registered yet</p>
-                    <Button onClick={openCreate} variant="outline" className="mt-4">Add your first school</Button>
+                    {role === 'admin' && <Button onClick={openCreate} variant="outline" className="mt-4">Add your first school</Button>}
                 </div>
             ) : (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -84,14 +89,16 @@ export default function Schools() {
                                 <div className="w-10 h-10 rounded-xl bg-teal/10 flex items-center justify-center">
                                     <School className="w-5 h-5 text-teal" />
                                 </div>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => openEdit(school)} className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground">
-                                        <Edit2 className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button onClick={() => handleDelete(school.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500">
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
+                                {role === 'admin' && (
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => openEdit(school)} className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground">
+                                            <Edit2 className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button onClick={() => handleDelete(school.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500">
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                             <h3 className="font-semibold text-foreground">{school.name}</h3>
                             {school.division && <p className="text-xs text-teal mt-0.5 font-medium">{school.division} Division</p>}
