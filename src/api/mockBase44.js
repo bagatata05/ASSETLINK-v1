@@ -3,7 +3,7 @@
  * Replaces the real @base44/sdk with localStorage-based CRUD and mock auth.
  */
 
-import { DEMO_USER, SEED_SCHOOLS, SEED_ASSETS, SEED_REPAIR_REQUESTS, SEED_TASKS } from './seedData';
+import { DEMO_USERS, DEMO_USER, SEED_SCHOOLS, SEED_ASSETS, SEED_REPAIR_REQUESTS, SEED_TASKS } from './seedData';
 
 // ── LocalStorage Helper ──────────────────────────────────────────────
 const STORE_PREFIX = 'assetlink_mock_';
@@ -240,7 +240,7 @@ const mockAuth = {
     },
 
     async loginViaEmailPassword(email, password) {
-        const user = { ...DEMO_USER, email };
+        const user = DEMO_USERS.find(u => u.email === email) || { ...DEMO_USER, email };
         localStorage.setItem(MOCK_USER_KEY, JSON.stringify(user));
         const token = 'mock_token_' + Date.now();
         this.setToken(token);
