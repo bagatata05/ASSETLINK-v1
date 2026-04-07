@@ -20,6 +20,12 @@ export const AuthProvider = ({ children }) => {
             setIsLoadingAuth(true);
             setAuthError(null);
 
+            // BACKEND: This calls base44.auth.me() which should return authenticated user with role.
+            // Backend must ensure:
+            //   1. User role is verified against auth token/session
+            //   2. Role is one of: admin, principal, supervisor, teacher, maintenance
+            //   3. Role cannot be changed without admin action
+            //   4. Role is checked on every protected endpoint
             // Get current user from the client (works with both real and mock)
             const currentUser = await base44.auth.me();
             setUser(currentUser);
