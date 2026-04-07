@@ -136,10 +136,25 @@ export default function ReportDamage() {
 
                     {showQR && (
                         <div className="bg-muted rounded-xl p-6 text-center space-y-3 border-2 border-dashed border-teal/30">
-                            <QrCode className="w-12 h-12 mx-auto text-teal opacity-60" />
-                            <p className="text-sm text-muted-foreground">Point your camera at the asset QR code to auto-fill asset details.</p>
-                            <p className="text-xs text-muted-foreground">QR code scanning requires camera access on mobile devices.</p>
-                            <Button size="sm" variant="outline" onClick={() => setShowQR(false)}>Close</Button>
+                            <div className="w-40 h-40 mx-auto bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center">
+                                <QrCode className="w-16 h-16 text-slate-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-foreground">QR Code Scanner</p>
+                                <p className="text-xs text-muted-foreground mt-1">Point your camera at the asset QR code to auto-fill asset details.</p>
+                                <p className="text-xs text-muted-foreground mt-2">• Requires camera access on mobile devices</p>
+                                <p className="text-xs text-muted-foreground">• QR codes should contain asset ID or asset code</p>
+                            </div>
+                            {/* BACKEND: Integrate QR scanner library here (e.g., react-qr-reader or jsQR)
+                                - Enable camera access
+                                - Decode QR code result
+                                - Parse asset ID or asset code from QR data
+                                - Find matching asset and auto-select it
+                                - Example: if QR contains "ast_001", find asset with that ID
+                            */}
+                            <Button size="sm" variant="outline" onClick={() => setShowQR(false)}>
+                                Close Scanner
+                            </Button>
                         </div>
                     )}
 
