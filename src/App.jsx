@@ -16,6 +16,7 @@ import Analytics from './pages/Analytics';
 import Schools from './pages/Schools';
 import MaintenanceCalendar from './pages/MaintenanceCalendar';
 import AssetPublic from './pages/AssetPublic';
+import SupervisorOversight from './pages/SupervisorOversight';
 
 const AuthenticatedApp = () => {
     const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -57,6 +58,7 @@ const AuthenticatedApp = () => {
                 <Route path="/schools" element={<Schools />} />
                 <Route path="/calendar" element={<MaintenanceCalendar />} />
                 <Route path="/asset-view" element={<AssetPublic />} />
+                <Route path="/supervisor-oversight" element={<SupervisorOversight />} />
                 <Route path="*" element={<PageNotFound />} />
             </Route>
         </Routes>
