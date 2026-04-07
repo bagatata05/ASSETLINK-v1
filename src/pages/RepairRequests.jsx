@@ -25,6 +25,7 @@ export default function RepairRequests() {
     const [selected, setSelected] = useState(null);
     const [notes, setNotes] = useState('');
     const [assignedTo, setAssignedTo] = useState('');
+    const [verificationFeedback, setVerificationFeedback] = useState('');
     const [saving, setSaving] = useState(false);
 
     useEffect(() => { loadRequests(); }, []);
@@ -95,6 +96,71 @@ export default function RepairRequests() {
 
     async function handleConfirmComplete() {
         await updateStatus(selected.id, 'Completed', { teacher_confirmation: true, completed_date: new Date().toISOString().split('T')[0] });
+    }
+
+    // BACKEND: Teacher verifies repair is satisfactory (marks repair as completed)
+    async function handleVerifyRepair() {
+        setSaving(true);
+        // Find and update the related maintenance task
+        const allTasks = await base44.entities.MaintenanceTask.list('-created_date', 500);
+        const relatedTask = allTasks.find(t => t.repair_request_id === selected.id);
+        
+        if (relatedTask) {
+            await base44.entities.MaintenanceTask.update(relatedTask.id, {
+                status: 'Completed',
+                teacher_confirmation: true,
+                verified_by_email: currentUser?.email,
+                verified_date: new Date().toISOString().split('T')[0],
+            });
+        }
+
+        await updateStatus(selected.id, 'Completed', { 
+            teacher_confirmation: true, 
+            completed_date: new Date().toISOString().split('T')[0]
+        });
+        setVerificationFeedback('');
+        toast.success('Repair verified and closed');
+        setSaving(false);
+    }
+
+    // BACKEND: Teacher rejects repair, sends back to maintenance
+    async function handleRejectRepair() {
+        if (!verificationFeedback.trim()) {
+            toast.error('Please provide feedback on why repair is not satisfactory');
+            return;
+        }
+        setSaving(true);
+        
+        // Find and update the related maintenance task back to "In Progress"
+        const allTasks = await base44.entities.MaintenanceTask.list('-created_date', 500);
+        const relatedTask = allTasks.find(t => t.repair_request_id === selected.id);
+        
+        if (relatedTask) {
+            await base44.entities.MaintenanceTask.update(relatedTask.id, {
+                status: 'In Progress',
+                teacher_verification_notes: verificationFeedback,
+            });
+        }
+
+        // Keep repair in "In Progress" and add teacher notes
+        await base44.entities.RepairRequest.update(selected.id, {
+            teacher_verification_notes: verificationFeedback,
+        });
+
+        // Notify maintenance staff
+        if (relatedTask?.assigned_to_email) {
+            await base44.integrations.Core.SendEmail({
+                to: relatedTask.assigned_to_email,
+                subject: `⚠️ Repair Needs Rework — ${selected.asset_name}`,
+                body: `Dear ${relatedTask.assigned_to_name || 'Maintenance Staff'},\n\nThe teacher has reviewed the repair on "${selected.asset_name}" and indicated it needs additional work.\n\n📋 Request #: ${selected.request_number}\n🏫 School: ${selected.school_name}\n\n📝 Teacher's Feedback:\n${verificationFeedback}\n\nPlease return to this task and address the issues mentioned above.\n\n— AssetLink Notification System`,
+            });
+        }
+
+        toast.success('Repair rejected. Maintenance staff notified.');
+        setVerificationFeedback('');
+        setSaving(false);
+        setSelected(null);
+        loadRequests();
     }
 
     async function handleEscalate() {
@@ -231,9 +297,21 @@ export default function RepairRequests() {
                                     </div>
                                 )}
                                 {(role === 'teacher' || role === 'admin') && selected.status === 'In Progress' && (
-                                    <Button onClick={handleConfirmComplete} disabled={saving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm">
-                                        <CheckCircle className="w-4 h-4 mr-1" /> Confirm Completed
-                                    </Button>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs">Verify Repair Completion</Label>
+                                        <p className="text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded-lg p-2">
+                                            Maintenance has completed this repair. Please inspect the asset and indicate whether the repair is satisfactory.
+                                        </p>
+                                        <Textarea value={verificationFeedback} onChange={e => setVerificationFeedback(e.target.value)} placeholder="If rejecting: provide feedback on what needs rework (optional for approval)" rows={2} />
+                                        <div className="flex gap-2">
+                                            <Button onClick={handleVerifyRepair} disabled={saving} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm">
+                                                <CheckCircle className="w-4 h-4 mr-1" /> Approve & Close
+                                            </Button>
+                                            <Button onClick={handleRejectRepair} disabled={saving || !verificationFeedback.trim()} variant="outline" className="flex-1 border-orange-200 text-orange-600 hover:bg-orange-50 text-sm">
+                                                ↩️ Reject & Rework
+                                            </Button>
+                                        </div>
+                                    </div>
                                 )}
                                 {(role === 'principal' || role === 'admin') && !['Escalated', 'Completed', 'Rejected'].includes(selected.status) && (
                                     <div className="space-y-2">
