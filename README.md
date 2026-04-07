@@ -30,7 +30,8 @@ AssetLink runs in **mock mode** by default (no backend required). Login with any
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin/Teacher | `admin@assetlink.ph` | (any) |
+| Admin | `admin@assetlink.ph` | (any) |
+| Teacher | `teacher@assetlink.ph` | (any) |
 | Principal | `principal@assetlink.ph` | (any) |
 | Supervisor | `supervisor@assetlink.ph` | (any) |
 | Maintenance | `maintenance@assetlink.ph` | (any) |
