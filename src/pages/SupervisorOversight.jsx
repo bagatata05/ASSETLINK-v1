@@ -36,10 +36,14 @@ export default function SupervisorOversight() {
         load();
     }, []);
 
-    // Filter by school if selected
-    const filtered = filterSchool === 'all' 
+    // Filter logic:
+    // DepEd Supervisor (admin) can filter all
+    // Barangay Official (supervisor) is locked to their school
+    const effectiveSchoolFilter = role === 'admin' ? filterSchool : (currentUser?.school_name || 'all');
+
+    const filtered = effectiveSchoolFilter === 'all' 
         ? requests 
-        : requests.filter(r => r.school_name === filterSchool);
+        : requests.filter(r => r.school_name === effectiveSchoolFilter);
 
     // Escalation queue - only Escalated status
     const escalatedRequests = filtered.filter(r => r.status === 'Escalated');
@@ -116,8 +120,14 @@ export default function SupervisorOversight() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Oversight Dashboard</h1>
-                    <p className="text-muted-foreground text-sm mt-1">Multi-school repair monitoring & escalation management</p>
+                    <h1 className="text-2xl font-bold text-foreground">
+                        {role === 'admin' ? 'Regional Oversight' : 'Community Monitoring'} Dashboard
+                    </h1>
+                    <p className="text-muted-foreground text-sm mt-1">
+                        {role === 'admin' 
+                            ? 'Multi-school repair monitoring & regional escalation management' 
+                            : `Monitoring asset condition for ${currentUser?.school_name || 'Baliwasan Senior High School'}`}
+                    </p>
                 </div>
             </div>
 
