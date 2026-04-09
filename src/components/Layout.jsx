@@ -14,9 +14,9 @@ const navItems = [
     { path: '/repair-requests', label: 'Repair Requests', icon: AlertTriangle, roles: ['admin', 'teacher', 'principal', 'supervisor'] },
     { path: '/report-damage', label: 'Report Damage', icon: AlertTriangle, roles: ['admin', 'teacher'] },
     { path: '/tasks', label: 'My Tasks', icon: Wrench, roles: ['admin', 'maintenance'] },
-    { path: '/analytics', label: 'Analytics', icon: BarChart3, roles: ['admin', 'principal', 'supervisor'] },
-    { path: '/schools', label: 'Schools', icon: School, roles: ['admin', 'supervisor'] },
-    { path: '/calendar', label: 'Calendar', icon: CalendarDays, roles: ['admin', 'maintenance', 'principal', 'supervisor'] },
+    { path: '/analytics', label: 'Analytics', icon: BarChart3, roles: ['admin', 'principal'] },
+    { path: '/schools', label: 'Schools', icon: School, roles: ['admin'] },
+    { path: '/calendar', label: 'Calendar', icon: CalendarDays, roles: ['admin', 'maintenance', 'principal'] },
     { path: '/supervisor-oversight', label: 'Oversight', icon: ShieldAlert, roles: ['admin', 'supervisor'] },
 ];
 
@@ -58,7 +58,9 @@ export default function Layout() {
                     {/* Role badge */}
                     <div className="px-6 py-3">
                         <span className="text-xs font-semibold uppercase tracking-widest text-teal px-2 py-1 bg-teal/10 rounded-full">
-                            {role}
+                            {role === 'admin' ? 'DepEd Supervisor' : 
+                             role === 'supervisor' ? 'Barangay Official' : 
+                             role}
                         </span>
                     </div>
 
