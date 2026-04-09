@@ -46,10 +46,35 @@ export default function LocalLogin() {
                         >
                             <div className="flex flex-col items-start min-w-0">
                                 <span className="font-semibold text-slate-900">{user.full_name}</span>
-                                <span className="text-sm text-slate-500 capitalize">{user.role} • {user.email}</span>
+                                <span className="text-sm text-slate-500">
+                                    {user.role === 'admin' ? 'DepEd Supervisor' : 
+                                     user.role === 'supervisor' ? 'Barangay Official' : 
+                                     user.role.charAt(0).toUpperCase() + user.role.slice(1)} • {user.email}
+                                </span>
                             </div>
                         </Button>
                     ))}
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-slate-100">
+                    <Button 
+                        variant="secondary" 
+                        size="sm"
+                        className="w-full text-xs text-slate-500 hover:text-teal transition-colors"
+                        onClick={() => {
+                            if (confirm('This will reset all local repairs, assets, and schools to match the Baliwasan SHS defaults. Proceed?')) {
+                                import('../api/mockBase44').then(mod => {
+                                    mod.resetSystem();
+                                    window.location.reload();
+                                });
+                            }
+                        }}
+                    >
+                        Sync Data with Project Document
+                    </Button>
+                    <p className="text-[10px] text-center text-slate-400 mt-2">
+                        Clears your browser's local cache and restores original project seeds.
+                    </p>
                 </div>
             </div>
         </div>
