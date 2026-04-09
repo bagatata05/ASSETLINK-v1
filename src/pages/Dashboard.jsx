@@ -20,12 +20,25 @@ export default function Dashboard() {
 
     useEffect(() => {
         async function load() {
-            const [r, a, t, s] = await Promise.all([
-                base44.entities.RepairRequest.list('-created_date', 200),
-                base44.entities.Asset.list('-created_date', 200),
-                base44.entities.MaintenanceTask.list('-created_date', 200),
-                base44.entities.School.list('-created_date', 50),
-            ]);
+            const isLocal = !['admin'].includes(role);
+            const schoolId = currentUser?.school_id;
+
+            let r, a, t, s;
+            if (isLocal && schoolId) {
+                [r, a, t, s] = await Promise.all([
+                    base44.entities.RepairRequest.filter({ school_id: schoolId }, '-created_date', 200),
+                    base44.entities.Asset.filter({ school_id: schoolId }, '-created_date', 200),
+                    base44.entities.MaintenanceTask.filter({ school_id: schoolId }, '-created_date', 200),
+                    base44.entities.School.filter({ id: schoolId }, '-created_date', 1),
+                ]);
+            } else {
+                [r, a, t, s] = await Promise.all([
+                    base44.entities.RepairRequest.list('-created_date', 200),
+                    base44.entities.Asset.list('-created_date', 200),
+                    base44.entities.MaintenanceTask.list('-created_date', 200),
+                    base44.entities.School.list('-created_date', 50),
+                ]);
+            }
             setRequests(r);
             setAssets(a);
             setTasks(t);
@@ -33,7 +46,7 @@ export default function Dashboard() {
             setLoading(false);
         }
         load();
-    }, []);
+    }, [role, currentUser]);
 
     const myTasks = tasks.filter(t =>
         t.assigned_to_email === currentUser?.email ||
@@ -213,53 +226,42 @@ export default function Dashboard() {
         return (
             <div className="space-y-8 animate-fade-in">
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Supervisor Overview</h1>
-                    <p className="text-muted-foreground mt-1">Monitoring all schools under your jurisdiction.</p>
+                    <h1 className="text-2xl font-bold text-foreground">Community Monitoring Dashboard</h1>
+                    <p className="text-muted-foreground mt-1">Monitoring asset condition for {currentUser?.school_name}.</p>
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatsCard title="Schools" value={schools.length} subtitle="Under monitoring" icon={School} color="teal" />
-                    <StatsCard title="Total Assets" value={assets.length} subtitle="All schools" icon={Package} color="blue" />
-                    <StatsCard title="Open Requests" value={requests.filter(r => !['Completed', 'Rejected'].includes(r.status)).length} subtitle="Unresolved" icon={AlertTriangle} color="amber" />
-                    <StatsCard title="Critical Issues" value={requests.filter(r => r.priority === 'Critical').length} subtitle="Urgent attention" icon={ShieldCheck} color="red" />
+                    <StatsCard title="Status" value="Active" subtitle="System Online" icon={ShieldCheck} color="teal" />
+                    <StatsCard title="Primary School" value="1" subtitle="Baliwasan SHS" icon={School} color="blue" />
+                    <StatsCard title="Open Requests" value={requests.filter(r => !['Completed', 'Rejected'].includes(r.status)).length} subtitle="Needs attention" icon={AlertTriangle} color="amber" />
+                    <StatsCard title="School Assets" value={assets.length} subtitle="Registered inventory" icon={Package} color="teal" />
                 </div>
-                {/* Per-school breakdown */}
+                {/* Quick Stats Overview */}
                 <div className="bg-card rounded-2xl border border-border p-6">
-                    <h2 className="text-base font-semibold text-foreground mb-5">School-by-School Status</h2>
-                    {bySchool.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            <School className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                            <p className="text-sm">No schools registered yet</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {bySchool.map(s => (
-                                <div key={s.name} className="p-4 rounded-xl border border-border bg-background">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <p className="font-semibold text-foreground text-sm">{s.name}</p>
-                                        <div className="flex gap-2">
-                                            {s.critical > 0 && <StatusBadge status="Critical" />}
-                                            <span className="text-xs text-muted-foreground">{s.total} requests</span>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-2 text-center">
-                                        {[{ label: 'Pending', val: s.pending, col: 'text-amber-600' }, { label: 'In Progress', val: s.inProgress, col: 'text-blue-600' }, { label: 'Completed', val: s.completed, col: 'text-emerald-600' }].map(({ label, val, col }) => (
-                                            <div key={label} className="bg-muted rounded-lg py-2">
-                                                <p className={`text-lg font-bold ${col}`}>{val}</p>
-                                                <p className="text-xs text-muted-foreground">{label}</p>
-                                            </div>
-                                        ))}
-                                    </div>
+                    <h2 className="text-base font-semibold text-foreground mb-4">Request Overview for {currentUser?.school_name}</h2>
+                    <div className="space-y-4">
+                        {[
+                            { label: 'Pending Approval', count: requests.filter(r => r.status === 'Pending').length, color: 'bg-amber-400' },
+                            { label: 'Under Repair', count: requests.filter(r => r.status === 'In Progress').length, color: 'bg-blue-400' },
+                            { label: 'Completed', count: requests.filter(r => r.status === 'Completed').length, color: 'bg-emerald-400' }
+                        ].map(({ label, count, color }) => (
+                            <div key={label}>
+                                <div className="flex justify-between text-sm mb-1">
+                                    <span className="text-muted-foreground">{label}</span>
+                                    <span className="font-medium">{count}</span>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full ${color} transition-all duration-700`} style={{ width: requests.length > 0 ? `${(count / requests.length) * 100}%` : '0%' }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                {/* Escalated across all schools */}
+                {/* Escalated Issues */}
                 <div className="bg-card rounded-2xl border border-border p-6">
-                    <h2 className="text-base font-semibold text-foreground mb-4">Escalated Issues</h2>
+                    <h2 className="text-base font-semibold text-foreground mb-4">Escalations & Alerts</h2>
                     <div className="space-y-3">
                         {requests.filter(r => r.status === 'Escalated').length === 0 ? (
-                            <p className="text-sm text-muted-foreground text-center py-4">No escalated issues across all schools.</p>
+                            <p className="text-sm text-muted-foreground text-center py-4">No escalated issues needing regional attention.</p>
                         ) : requests.filter(r => r.status === 'Escalated').map(req => (
                             <div key={req.id} className="flex items-center gap-3 p-3 rounded-xl bg-purple-50 border border-purple-100">
                                 <AlertTriangle className="w-4 h-4 text-purple-600 flex-shrink-0" />
@@ -283,9 +285,13 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-foreground">
-                        Welcome back, {currentUser?.full_name?.split(' ')[0] || 'User'} 👋
+                        {role === 'admin' ? 'DepEd Supervisor Dashboard' : `Welcome back, ${currentUser?.full_name?.split(' ')[0] || 'User'} 👋`}
                     </h1>
-                    <p className="text-muted-foreground mt-1">Here's what's happening with your school assets today.</p>
+                    <p className="text-muted-foreground mt-1">
+                        {role === 'admin' 
+                            ? 'Regional oversight and asset management system' 
+                            : `Asset management for ${currentUser?.school_name || 'Baliwasan Senior High School'}`}
+                    </p>
                 </div>
                 {(role === 'teacher' || role === 'admin') && (
                     <Link to="/report-damage">
