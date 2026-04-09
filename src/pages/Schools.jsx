@@ -20,7 +20,10 @@ export default function Schools() {
 
     useEffect(() => { loadSchools(); }, []);
     async function loadSchools() {
-        const data = await base44.entities.School.list('-created_date', 100);
+        let data = await base44.entities.School.list('-created_date', 100);
+        if (role !== 'admin' && currentUser?.school_id) {
+            data = data.filter(s => s.id === currentUser.school_id);
+        }
         setSchools(data);
         setLoading(false);
     }
@@ -63,8 +66,14 @@ export default function Schools() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Schools</h1>
-                    <p className="text-muted-foreground text-sm mt-1">Manage registered schools in the system</p>
+                    <h1 className="text-2xl font-bold text-foreground">
+                        {role === 'admin' ? 'Regional Schools' : 'School Profile'}
+                    </h1>
+                    <p className="text-muted-foreground text-sm mt-1">
+                        {role === 'admin' 
+                            ? 'Manage all registered schools in the division' 
+                            : 'View and manage profile for Baliwasan Senior High School - Stand-Alone'}
+                    </p>
                 </div>
                 {role === 'admin' && (
                     <Button onClick={openCreate} className="bg-teal hover:bg-teal/90 text-white gap-2">
@@ -119,7 +128,7 @@ export default function Schools() {
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">
                             <Label>School Name *</Label>
-                            <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Mabini Elementary School" />
+                            <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Baliwasan Senior High School" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
