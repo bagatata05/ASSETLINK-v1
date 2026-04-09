@@ -86,14 +86,14 @@ export default function Dashboard() {
                         <Button className="bg-teal hover:bg-teal/90 text-white gap-2"><AlertTriangle className="w-4 h-4" /> Review Requests</Button>
                     </Link>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatsCard title="Awaiting Approval" value={pendingApproval.length} subtitle="Need your action" icon={Clock} color="amber" />
-                    <StatsCard title="In Progress" value={inProgress.length} subtitle="Assigned to staff" icon={Wrench} color="blue" />
-                    <StatsCard title="Escalated" value={escalated.length} subtitle="Needs higher authority" icon={AlertTriangle} color="red" />
-                    <StatsCard title="Completed" value={completed.length} subtitle="Resolved repairs" icon={CheckCircle} color="green" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatsCard title="Awaiting Approval" value={pendingApproval.length} subtitle="Need action" icon={Clock} color="amber" />
+                    <StatsCard title="In Progress" value={inProgress.length} subtitle="Assigned" icon={Wrench} color="blue" />
+                    <StatsCard title="Escalated" value={escalated.length} subtitle="Needs regional" icon={AlertTriangle} color="red" />
+                    <StatsCard title="Completed" value={completed.length} subtitle="Resolved" icon={CheckCircle} color="green" />
                 </div>
                 {/* Pending approval list */}
-                <div className="bg-card rounded-2xl border border-border p-6">
+                <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 overflow-hidden">
                     <div className="flex items-center justify-between mb-5">
                         <h2 className="text-base font-semibold text-foreground">Pending Your Approval</h2>
                         <Link to="/repair-requests"><Button variant="ghost" size="sm" className="text-teal gap-1 text-xs">View all <ArrowRight className="w-3 h-3" /></Button></Link>
@@ -111,7 +111,7 @@ export default function Dashboard() {
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-foreground truncate">{req.asset_name}</p>
                                         <p className="text-xs text-muted-foreground truncate">{req.description}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5">{req.school_name} · {req.reported_by_name}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{req.school_name} · {req.reported_by_name}</p>
                                     </div>
                                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                         <StatusBadge status={req.priority} />
@@ -123,7 +123,7 @@ export default function Dashboard() {
                     </div>
                 </div>
                 {/* Progress overview */}
-                <div className="bg-card rounded-2xl border border-border p-6">
+                <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 overflow-hidden">
                     <h2 className="text-base font-semibold text-foreground mb-4">Overall Progress</h2>
                     <div className="space-y-3">
                         {[{ label: 'Pending', count: pendingApproval.length, color: 'bg-amber-400' }, { label: 'In Progress', count: inProgress.length, color: 'bg-blue-400' }, { label: 'Completed', count: completed.length, color: 'bg-emerald-400' }, { label: 'Escalated', count: escalated.length, color: 'bg-purple-400' }].map(({ label, count, color }) => (
@@ -163,14 +163,14 @@ export default function Dashboard() {
                         <Button className="bg-teal hover:bg-teal/90 text-white gap-2"><Wrench className="w-4 h-4" /> View All Tasks</Button>
                     </Link>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatsCard title="Assigned" value={myAssigned.length} subtitle="New tasks" icon={Clock} color="blue" />
-                    <StatsCard title="In Progress" value={myInProgress.length} subtitle="Active work" icon={Wrench} color="amber" />
+                    <StatsCard title="Active" value={myInProgress.length} subtitle="In progress" icon={Wrench} color="amber" />
                     <StatsCard title="On Hold" value={myOnHold.length} subtitle="Paused" icon={AlertTriangle} color="red" />
-                    <StatsCard title="Completed" value={myCompleted.length} subtitle="Done" icon={CheckCircle} color="green" />
+                    <StatsCard title="Done" value={myCompleted.length} subtitle="Completed" icon={CheckCircle} color="green" />
                 </div>
                 {/* Active tasks */}
-                <div className="bg-card rounded-2xl border border-border p-6">
+                <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 overflow-hidden">
                     <div className="flex items-center justify-between mb-5">
                         <h2 className="text-base font-semibold text-foreground">Active Tasks</h2>
                         <Link to="/tasks"><Button variant="ghost" size="sm" className="text-teal gap-1 text-xs">View all <ArrowRight className="w-3 h-3" /></Button></Link>
@@ -189,7 +189,7 @@ export default function Dashboard() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-foreground truncate">{task.asset_name}</p>
-                                        <p className="text-xs text-muted-foreground">{task.school_name}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{task.school_name}</p>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
                                         <StatusBadge status={task.status} />
@@ -229,14 +229,14 @@ export default function Dashboard() {
                     <h1 className="text-2xl font-bold text-foreground">Community Monitoring Dashboard</h1>
                     <p className="text-muted-foreground mt-1">Monitoring asset condition for {currentUser?.school_name}.</p>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatsCard title="Status" value="Active" subtitle="System Online" icon={ShieldCheck} color="teal" />
                     <StatsCard title="Primary School" value="1" subtitle="Baliwasan SHS" icon={School} color="blue" />
                     <StatsCard title="Open Requests" value={requests.filter(r => !['Completed', 'Rejected'].includes(r.status)).length} subtitle="Needs attention" icon={AlertTriangle} color="amber" />
-                    <StatsCard title="School Assets" value={assets.length} subtitle="Registered inventory" icon={Package} color="teal" />
+                    <StatsCard title="School Assets" value={assets.length} subtitle="Inventory" icon={Package} color="teal" />
                 </div>
                 {/* Quick Stats Overview */}
-                <div className="bg-card rounded-2xl border border-border p-6">
+                <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 overflow-hidden">
                     <h2 className="text-base font-semibold text-foreground mb-4">Request Overview for {currentUser?.school_name}</h2>
                     <div className="space-y-4">
                         {[
@@ -257,7 +257,7 @@ export default function Dashboard() {
                     </div>
                 </div>
                 {/* Escalated Issues */}
-                <div className="bg-card rounded-2xl border border-border p-6">
+                <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 overflow-hidden">
                     <h2 className="text-base font-semibold text-foreground mb-4">Escalations & Alerts</h2>
                     <div className="space-y-3">
                         {requests.filter(r => r.status === 'Escalated').length === 0 ? (
@@ -267,7 +267,7 @@ export default function Dashboard() {
                                 <AlertTriangle className="w-4 h-4 text-purple-600 flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-foreground truncate">{req.asset_name}</p>
-                                    <p className="text-xs text-muted-foreground">{req.school_name} · {req.escalated_reason || 'No reason provided'}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{req.school_name} · {req.escalated_reason || 'No reason provided'}</p>
                                 </div>
                                 <StatusBadge status="Escalated" />
                             </div>
@@ -303,16 +303,16 @@ export default function Dashboard() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatsCard title="Total Assets" value={assets.length} subtitle="Registered assets" icon={Package} color="teal" />
-                <StatsCard title="Pending Repairs" value={requests.filter(r => r.status === 'Pending').length} subtitle="Awaiting action" icon={Clock} color="amber" />
-                <StatsCard title="In Progress" value={requests.filter(r => r.status === 'In Progress').length} subtitle="Active repairs" icon={Wrench} color="blue" />
-                <StatsCard title="Critical Issues" value={requests.filter(r => r.priority === 'Critical').length} subtitle="Urgent attention" icon={AlertTriangle} color="red" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatsCard title="Total Assets" value={assets.length} subtitle="Inventory" icon={Package} color="teal" />
+                <StatsCard title="Pending" value={requests.filter(r => r.status === 'Pending').length} subtitle="Needs action" icon={Clock} color="amber" />
+                <StatsCard title="In Progress" value={requests.filter(r => r.status === 'In Progress').length} subtitle="Active fixes" icon={Wrench} color="blue" />
+                <StatsCard title="Critical" value={requests.filter(r => r.priority === 'Critical').length} subtitle="Urgent" icon={AlertTriangle} color="red" />
             </div>
 
-            <div className="grid lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Recent Requests */}
-                <div className="lg:col-span-2 bg-card rounded-2xl border border-border p-6">
+                <div className="lg:col-span-2 bg-card rounded-2xl border border-border p-4 sm:p-6 overflow-hidden">
                     <div className="flex items-center justify-between mb-5">
                         <h2 className="text-base font-semibold text-foreground">Recent Repair Requests</h2>
                         <Link to="/repair-requests">
@@ -351,7 +351,7 @@ export default function Dashboard() {
 
                 {/* Quick Stats */}
                 <div className="space-y-4">
-                    <div className="bg-card rounded-2xl border border-border p-6">
+                    <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 overflow-hidden">
                         <h2 className="text-base font-semibold text-foreground mb-4">Request Overview</h2>
                         <div className="space-y-3">
                             {[
@@ -375,7 +375,7 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-teal to-teal/80 rounded-2xl p-6 text-white">
+                    <div className="bg-gradient-to-br from-teal to-teal/80 rounded-2xl p-4 sm:p-6 text-white overflow-hidden">
                         <TrendingUp className="w-8 h-8 mb-3 opacity-80" />
                         <p className="text-sm font-medium opacity-80">Resolution Rate</p>
                         <p className="text-3xl font-bold mt-1">
