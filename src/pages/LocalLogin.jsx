@@ -44,13 +44,18 @@ export default function LocalLogin() {
                             onClick={() => handleLogin(user)}
                             disabled={isLoading}
                         >
-                            <div className="flex flex-col items-start min-w-0">
-                                <span className="font-semibold text-slate-900">{user.full_name}</span>
-                                <span className="text-sm text-slate-500">
-                                    {user.role === 'admin' ? 'DepEd Supervisor' : 
-                                     user.role === 'supervisor' ? 'Barangay Official' : 
-                                     user.role.charAt(0).toUpperCase() + user.role.slice(1)} • {user.email}
-                                </span>
+                            <div className="flex flex-col items-start min-w-0 flex-1">
+                                <span className="font-semibold text-slate-900 truncate w-full">{user.full_name}</span>
+                                <div className="flex flex-col text-left">
+                                    <span className="text-xs font-medium text-teal mt-0.5">
+                                        {user.role === 'admin' ? 'DepEd Supervisor' : 
+                                         user.role === 'supervisor' ? 'Barangay Official' : 
+                                         user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                    </span>
+                                    <span className="text-xs text-slate-400 truncate w-full">
+                                        {user.email}
+                                    </span>
+                                </div>
                             </div>
                         </Button>
                     ))}
