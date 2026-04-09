@@ -42,6 +42,22 @@ function ensureSeeded() {
     }
 }
 
+/**
+ * Resets the entire mock system by clearing all localStorage keys
+ * with the mock prefix. This forces a re-seed on next load.
+ */
+export function resetSystem() {
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+        if (key.startsWith(STORE_PREFIX)) {
+            localStorage.removeItem(key);
+        }
+    });
+    // Also clear tokens
+    localStorage.removeItem('base44_access_token');
+    localStorage.removeItem('token');
+}
+
 // Run seed check immediately
 ensureSeeded();
 
