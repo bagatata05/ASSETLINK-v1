@@ -26,8 +26,12 @@ export default function ReportDamage() {
     const fileRef = useRef(null);
 
     useEffect(() => {
-        base44.entities.Asset.list('-created_date', 200).then(setAssets);
-    }, []);
+        if (currentUser?.school_id) {
+            base44.entities.Asset.filter({ school_id: currentUser.school_id }, '-created_date', 500).then(setAssets);
+        } else {
+            base44.entities.Asset.list('-created_date', 200).then(setAssets);
+        }
+    }, [currentUser]);
 
     const filteredAssets = assets.filter(a =>
         !assetSearch || a.name?.toLowerCase().includes(assetSearch.toLowerCase()) || a.asset_code?.toLowerCase().includes(assetSearch.toLowerCase())
