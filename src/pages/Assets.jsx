@@ -25,7 +25,7 @@ export default function Assets() {
     const [filterCondition, setFilterCondition] = useState('all');
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', asset_code: '', category: 'Furniture', condition: 'Good', location: '', school_name: '', description: '' });
+    const [form, setForm] = useState({ name: '', asset_code: '', category: 'Furniture', condition: 'Good', location: '', school_id: '', school_name: '', description: '' });
     const [saving, setSaving] = useState(false);
     const [selected, setSelected] = useState(new Set());
     const [selectMode, setSelectMode] = useState(false);
@@ -79,7 +79,16 @@ export default function Assets() {
     }
 
     async function loadAssets() {
-        const data = await base44.entities.Asset.list('-created_date', 200);
+        let data;
+        if (role === 'admin') {
+            // DepEd Supervisor sees all
+            data = await base44.entities.Asset.list('-created_date', 500);
+        } else if (currentUser?.school_id) {
+            // Local school staff see only their school
+            data = await base44.entities.Asset.filter({ school_id: currentUser.school_id }, '-created_date', 500);
+        } else {
+            data = await base44.entities.Asset.list('-created_date', 200);
+        }
         setAssets(data);
         setLoading(false);
     }
@@ -94,13 +103,31 @@ export default function Assets() {
 
     function openCreate() {
         setEditing(null);
-        setForm({ name: '', asset_code: '', category: 'Furniture', condition: 'Good', location: '', school_name: '', description: '' });
+        setForm({ 
+            name: '', 
+            asset_code: '', 
+            category: 'Furniture', 
+            condition: 'Good', 
+            location: '', 
+            school_id: currentUser?.school_id || '',
+            school_name: currentUser?.school_name || '', 
+            description: '' 
+        });
         setShowModal(true);
     }
 
     function openEdit(asset) {
         setEditing(asset);
-        setForm({ name: asset.name, asset_code: asset.asset_code, category: asset.category, condition: asset.condition, location: asset.location || '', school_name: asset.school_name || '', description: asset.description || '' });
+        setForm({ 
+            name: asset.name, 
+            asset_code: asset.asset_code, 
+            category: asset.category, 
+            condition: asset.condition, 
+            location: asset.location || '', 
+            school_id: asset.school_id || '',
+            school_name: asset.school_name || '', 
+            description: asset.description || '' 
+        });
         setShowModal(true);
     }
 
@@ -298,10 +325,6 @@ export default function Assets() {
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>{CONDITIONS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                                 </Select>
-                            </div>
-                            <div className="space-y-1.5 col-span-2">
-                                <Label>School Name</Label>
-                                <Input value={form.school_name} onChange={e => setForm({ ...form, school_name: e.target.value })} placeholder="e.g. Mabini Elementary School" />
                             </div>
                             <div className="space-y-1.5 col-span-2">
                                 <Label>Description</Label>
