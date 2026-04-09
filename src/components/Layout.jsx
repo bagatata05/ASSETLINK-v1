@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { base44 } from '@/api/base44Client';
+import BottomNav from './BottomNav';
 
 const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'teacher', 'principal', 'maintenance', 'supervisor'] },
@@ -29,18 +30,18 @@ export default function Layout() {
     const visibleItems = navItems.filter(item => item.roles.includes(role));
 
     return (
-        <div className="min-h-screen bg-background flex">
+        <div className="min-h-screen bg-background flex overflow-x-hidden">
             {/* Mobile overlay */}
             {sidebarOpen && (
-                <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+                <div className="fixed inset-0 bg-black/60 z-[60] lg:hidden backdrop-blur-sm transition-all" onClick={() => setSidebarOpen(false)} />
             )}
 
             {/* Sidebar */}
             <aside className={cn(
-                "fixed top-0 left-0 h-full w-64 bg-sidebar z-50 transform transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto",
+                "fixed top-0 left-0 h-full w-64 bg-sidebar z-[70] transform transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto shadow-2xl lg:shadow-none",
                 sidebarOpen ? "translate-x-0" : "-translate-x-full"
             )}>
-                <div className="flex flex-col h-full">
+                <div className="flex flex-col h-full pb-20 lg:pb-0">
                     {/* Logo */}
                     <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
                         <div className="w-9 h-9 rounded-xl bg-teal flex items-center justify-center shadow-sm">
@@ -125,9 +126,12 @@ export default function Layout() {
                     </button>
                 </header>
 
-                <main className="flex-1 p-4 lg:p-8">
+                <main className="flex-1 p-3 sm:p-4 lg:p-8 pb-24 lg:pb-8">
                     <Outlet />
                 </main>
+
+                {/* Mobile Bottom Navigation */}
+                <BottomNav />
             </div>
         </div>
     );
