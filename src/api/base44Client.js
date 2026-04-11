@@ -2,70 +2,117 @@
 
 import { mockBase44 } from './mockBase44';
 
-// Use mock client for local development.
-// To connect to a real Base44 backend, set VITE_BASE44_REAL_BACKEND=true
-// in your .env file and ensure VITE_BASE44_APP_BASE_URL points to the real server.
 const useRealBackend = import.meta.env.VITE_BASE44_REAL_BACKEND === 'true';
+const API_BASE_URL = import.meta.env.VITE_BASE44_APP_BASE_URL || 'http://localhost:8000/api/v1';
 
-let base44Instance;
+const createRealClient = () => {
+    const request = async (path, options = {}) => {
+        const token = localStorage.getItem('auth_token');
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` }),
+            ...options.headers,
+        };
 
-if (useRealBackend) {
-    // Dynamic import only when needed — avoids errors when no real backend exists
-    const { createClient } = await import('@base44/sdk');
-    const { appParams } = await import('@/lib/app-params');
-    const { appId, token, functionsVersion, appBaseUrl } = appParams;
-    base44Instance = createClient({
-        appId,
-        token,
-        functionsVersion,
-        serverUrl: '',
-        requiresAuth: false,
-        appBaseUrl,
+        const response = await fetch(`${API_BASE_URL}${path}`, {
+            ...options,
+            headers,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw {
+                status: response.status,
+                message: errorData.error || 'Request failed',
+                data: errorData
+            };
+        }
+
+        return await response.json();
+    };
+
+    const createEntityManager = (entityName) => {
+        const basePath = `/${entityName.toLowerCase()}s`; // Generic pluralization
+        // Manual overrides for specific non-standard pluralizations
+        const pathOverrides = {
+            'RepairRequest': '/repairs',
+            'MaintenanceTask': '/maintenance-tasks',
+            'Asset': '/assets',
+            'School': '/schools'
+        };
+        const path = pathOverrides[entityName] || basePath;
+
+        return {
+            list: (sort, limit) => {
+                const params = new URLSearchParams();
+                if (sort) params.append('sort', sort);
+                if (limit) params.append('limit', limit);
+                const query = params.toString();
+                return request(`${path}${query ? `?${query}` : ''}`).then(res => res.data);
+            },
+            filter: (query, sort, limit) => {
+                const params = new URLSearchParams();
+                if (query) {
+                    Object.entries(query).forEach(([k, v]) => {
+                        if (v !== undefined && v !== null) params.append(k, v);
+                    });
+                }
+                if (sort) params.append('sort', sort);
+                if (limit) params.append('limit', limit);
+                const queryString = params.toString();
+                return request(`${path}${queryString ? `?${queryString}` : ''}`).then(res => res.data);
+            },
+            get: (id) => request(`${path}/${id}`).then(res => res.data),
+            create: (data) => request(path, { method: 'POST', body: JSON.stringify(data) }).then(res => res.data),
+            update: (id, data) => request(`${path}/${id}`, { method: 'PATCH', body: JSON.stringify(data) }).then(res => res.data),
+            delete: (id) => request(`${path}/${id}`, { method: 'DELETE' }).then(res => res.data),
+        };
+    };
+
+    const entitiesProxy = new Proxy({}, {
+        get(_target, entityName) {
+            if (typeof entityName !== 'string' || entityName === 'then' || entityName.startsWith('_')) {
+                return undefined;
+            }
+            return createEntityManager(entityName);
+        },
     });
-} else {
-    console.log('[AssetLink] Running in local mode with mock data');
-    base44Instance = mockBase44;
-}
 
-/**
- * @typedef {Object} EntityMethods
- * @property {(sort?: string, limit?: number, skip?: number, fields?: string | string[]) => Promise<any[]>} list
- * @property {(query: object, sort?: string, limit?: number, skip?: number, fields?: string | string[]) => Promise<any[]>} filter
- * @property {(id: string) => Promise<any>} get
- * @property {(data: object) => Promise<any>} create
- * @property {(id: string, data: object) => Promise<any>} update
- * @property {(id: string) => Promise<any>} delete
- * @property {(query: object) => Promise<any>} deleteMany
- * @property {(data: any[]) => Promise<any[]>} bulkCreate
- * @property {(query: object, data: object) => Promise<any>} updateMany
- * @property {(data: any[]) => Promise<any>} bulkUpdate
- */
+    return {
+        auth: {
+            me: () => request('/auth/me').then(res => res.data),
+            logout: () => {
+                localStorage.removeItem('auth_token');
+            },
+            redirectToLogin: (callback) => {
+                window.location.href = `/login?callback=${encodeURIComponent(callback)}`;
+            }
+        },
+        entities: entitiesProxy,
+        integrations: {
+            Core: {
+                UploadFile: async ({ file }) => {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const token = localStorage.getItem('auth_token');
+                    const res = await fetch(`${API_BASE_URL}/photos/upload`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            ...(token && { 'Authorization': `Bearer ${token}` }),
+                        }
+                    }).then(r => r.json());
 
-/**
- * @typedef {Object} Base44Auth
- * @property {function(): Promise<any>} me
- * @property {function(object): Promise<any>} updateMe
- * @property {function(string=): void} redirectToLogin
- * @property {function(string, string=): void} loginWithProvider
- * @property {function(string=): void} logout
- * @property {function(string): void} setToken
- * @property {function(string, string): Promise<any>} loginViaEmailPassword
- * @property {function(): Promise<boolean>} isAuthenticated
- */
+                    return { file_url: res.data.photo_url };
+                },
+                SendEmail: async (params) => {
+                    console.log('[RealClient] SendEmail mock:', params);
+                    // For now, we'll just log this. In production, we'd add a /email endpoint.
+                    return { success: true };
+                }
+            }
+        }
+    };
+};
 
-/**
- * @typedef {Object} Base44Client
- * @property {Base44Auth} auth
- * @property {Object} entities
- * @property {EntityMethods} entities.Asset
- * @property {EntityMethods} entities.RepairRequest
- * @property {EntityMethods} entities.MaintenanceTask
- * @property {EntityMethods} entities.School
- * @property {Object} integrations
- * @property {Object} integrations.Core
- * @property {function({file: File}): Promise<{file_url: string}>} integrations.Core.UploadFile
- * @property {function({to: string, subject: string, body: string}): Promise<{success: boolean}>} integrations.Core.SendEmail
- */
-
-/** @type {Base44Client} */
-export const base44 = /** @type {any} */ (base44Instance);
+export const base44 = useRealBackend ? createRealClient() : mockBase44;
