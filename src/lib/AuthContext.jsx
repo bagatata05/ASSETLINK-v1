@@ -1,5 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { auth } from './firebase';
+import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from 'firebase/auth';
 
 const AuthContext = createContext(null);
 
@@ -12,59 +14,71 @@ export const AuthProvider = ({ children }) => {
     const [appPublicSettings, setAppPublicSettings] = useState(null);
 
     useEffect(() => {
-        checkAppState();
-    }, []);
-
-    const checkAppState = async () => {
-        try {
-            setIsLoadingAuth(true);
-            setAuthError(null);
-
-            // BACKEND: This calls base44.auth.me() which should return authenticated user with role.
-            // Backend must ensure:
-            //   1. User role is verified against auth token/session
-            //   2. Role is one of: admin, principal, supervisor, teacher, maintenance
-            //   3. Role cannot be changed without admin action
-            //   4. Role is checked on every protected endpoint
-            // Get current user from the client (works with both real and mock)
-            const currentUser = await base44.auth.me();
-            setUser(currentUser);
-            setIsAuthenticated(true);
-            setIsLoadingAuth(false);
-            setIsLoadingPublicSettings(false);
-        } catch (error) {
-            console.error('Auth check failed:', error);
-
-            // If auth fails, check if it's an auth_required error
-            if (error.status === 401 || error.status === 403) {
-                setAuthError({
-                    type: 'auth_required',
-                    message: 'Authentication required',
-                });
-            } else if (error.data?.extra_data?.reason === 'user_not_registered') {
-                setAuthError({
-                    type: 'user_not_registered',
-                    message: 'User not registered for this app',
-                });
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+                try {
+                    setIsLoadingAuth(true);
+                    // Force refresh of token
+                    const token = await firebaseUser.getIdToken(true);
+                    localStorage.setItem('auth_token', token);
+                    
+                    // Call backend to get user details/role
+                    const currentUser = await base44.auth.me();
+                    setUser(currentUser);
+                    setIsAuthenticated(true);
+                } catch (error) {
+                    console.error('Auth state change error:', error);
+                    setIsAuthenticated(false);
+                    setUser(null);
+                } finally {
+                    setIsLoadingAuth(false);
+                }
             } else {
-                // For local dev, just set a default user
+                localStorage.removeItem('auth_token');
                 setUser(null);
                 setIsAuthenticated(false);
+                setIsLoadingAuth(false);
             }
+        });
 
+        return () => unsubscribe();
+    }, []);
+
+    const login = async (email, password) => {
+        try {
+            setIsLoadingAuth(true);
+            await signInWithEmailAndPassword(auth, email, password);
+            // We don't set isLoadingAuth(false) here because the 
+            // onAuthStateChanged listener will handle it once the 
+            // profile is fetched from the backend.
+        } catch (error) {
+            console.error('Login error:', error);
+            setAuthError({
+                type: 'auth_failed',
+                message: error.message,
+            });
             setIsLoadingAuth(false);
-            setIsLoadingPublicSettings(false);
+            throw error;
         }
     };
 
-    const logout = () => {
-        setUser(null);
-        setIsAuthenticated(false);
-        base44.auth.logout(window.location.origin + '/');
+    const logout = async () => {
+        try {
+            await signOut(auth);
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('assetlink_mock_current_user');
+            setUser(null);
+            setIsAuthenticated(false);
+            // Optional: force reload to clear all states
+            window.location.reload();
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
     };
 
     const navigateToLogin = () => {
-        base44.auth.redirectToLogin(window.location.href);
+        // Since we are using Firebase, we just navigate to our own login page
+        window.location.href = '/login';
     };
 
     return (
@@ -77,8 +91,8 @@ export const AuthProvider = ({ children }) => {
             authError,
             appPublicSettings,
             logout,
+            login,
             navigateToLogin,
-            checkAppState,
         }}>
             {children}
         </AuthContext.Provider>
