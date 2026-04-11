@@ -69,8 +69,6 @@
     }
 }
 
-
-
 @layer base {
     * {
         @apply border-border outline-ring/50;
@@ -82,18 +80,42 @@
     }
 }
 
-@keyframes fade-in {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
+@layer utilities {
+    .glass {
+        @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-xl;
+    }
+    
+    .mesh-gradient {
+        background-color: #ffffff;
+        background-image: 
+            radial-gradient(at 0% 0%, hsla(174,100%,33%,0.15) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, hsla(190,100%,33%,0.15) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, hsla(174,100%,33%,0.1) 0px, transparent 50%),
+            radial-gradient(at 0% 100%, hsla(160,100%,33%,0.1) 0px, transparent 50%);
     }
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
+    .animate-float {
+        animation: float 6s ease-in-out infinite;
     }
-}
 
-.animate-fade-in {
-    animation: fade-in 0.3s ease-out;
+    @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+    }
+
+    @keyframes fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-fade-in {
+        animation: fade-in 0.3s ease-out;
+    }
 }
