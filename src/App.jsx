@@ -34,15 +34,17 @@ const AuthenticatedApp = () => {
     if (authError) {
         if (authError.type === 'user_not_registered') {
             return <UserNotRegisteredError />;
-        } else if (authError.type === 'auth_required') {
-            const isLocal = import.meta.env.VITE_BASE44_REAL_BACKEND !== 'true';
-            if (isLocal) {
-                return <LocalLogin />;
-            }
-            // Redirect to login automatically
-            navigateToLogin();
-            return null;
         }
+    }
+
+    const { isAuthenticated } = useAuth();
+    if (!isAuthenticated) {
+        return (
+            <Routes>
+                <Route path="/login" element={<LocalLogin />} />
+                <Route path="*" element={<LocalLogin />} />
+            </Routes>
+        );
     }
 
     // Render the main app
