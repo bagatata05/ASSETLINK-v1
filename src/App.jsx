@@ -18,8 +18,10 @@ import MaintenanceCalendar from './pages/MaintenanceCalendar';
 import AssetPublic from './pages/AssetPublic';
 import SupervisorOversight from './pages/SupervisorOversight';
 
+import RoleRoute from './lib/RoleRoute';
+
 const AuthenticatedApp = () => {
-    const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+    const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
 
     // Show loading spinner while checking app public settings or auth
     if (isLoadingPublicSettings || isLoadingAuth) {
@@ -47,20 +49,62 @@ const AuthenticatedApp = () => {
         );
     }
 
-    // Render the main app
+    // Render the main app with Role Based Access Control
     return (
         <Routes>
             <Route element={<Layout />}>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/assets" element={<Assets />} />
-                <Route path="/repair-requests" element={<RepairRequests />} />
-                <Route path="/report-damage" element={<ReportDamage />} />
-                <Route path="/tasks" element={<Tasks />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/schools" element={<Schools />} />
-                <Route path="/calendar" element={<MaintenanceCalendar />} />
+                
+                <Route path="/assets" element={
+                    <RoleRoute allowedRoles={['admin', 'teacher', 'principal', 'supervisor']}>
+                        <Assets />
+                    </RoleRoute>
+                } />
+                
+                <Route path="/repair-requests" element={
+                    <RoleRoute allowedRoles={['admin', 'teacher', 'principal', 'supervisor']}>
+                        <RepairRequests />
+                    </RoleRoute>
+                } />
+                
+                <Route path="/report-damage" element={
+                    <RoleRoute allowedRoles={['admin', 'teacher']}>
+                        <ReportDamage />
+                    </RoleRoute>
+                } />
+                
+                <Route path="/tasks" element={
+                    <RoleRoute allowedRoles={['admin', 'maintenance']}>
+                        <Tasks />
+                    </RoleRoute>
+                } />
+                
+                <Route path="/analytics" element={
+                    <RoleRoute allowedRoles={['admin', 'principal']}>
+                        <Analytics />
+                    </RoleRoute>
+                } />
+                
+                <Route path="/schools" element={
+                    <RoleRoute allowedRoles={['admin']}>
+                        <Schools />
+                    </RoleRoute>
+                } />
+                
+                <Route path="/calendar" element={
+                    <RoleRoute allowedRoles={['admin', 'maintenance', 'principal']}>
+                        <MaintenanceCalendar />
+                    </RoleRoute>
+                } />
+                
                 <Route path="/asset-view" element={<AssetPublic />} />
-                <Route path="/supervisor-oversight" element={<SupervisorOversight />} />
+                
+                <Route path="/supervisor-oversight" element={
+                    <RoleRoute allowedRoles={['admin', 'supervisor']}>
+                        <SupervisorOversight />
+                    </RoleRoute>
+                } />
+                
                 <Route path="*" element={<PageNotFound />} />
             </Route>
         </Routes>
