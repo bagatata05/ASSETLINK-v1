@@ -1,9 +1,5 @@
 /// <reference types="vite/client" />
-
-import { mockBase44 } from './mockBase44';
-
-const useRealBackend = import.meta.env.VITE_BASE44_REAL_BACKEND === 'true';
-const API_BASE_URL = import.meta.env.VITE_BASE44_APP_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = '/api/v1';
 
 const createRealClient = () => {
     const request = async (path, options = {}) => {
@@ -14,7 +10,10 @@ const createRealClient = () => {
             ...options.headers,
         };
 
-        const response = await fetch(`${API_BASE_URL}${path}`, {
+        // Defensive: Don't double-prefix if the path already contains it
+        const fullPath = path.startsWith(API_BASE_URL) ? path : `${API_BASE_URL}${path}`;
+
+        const response = await fetch(fullPath, {
             ...options,
             headers,
         });
@@ -95,7 +94,8 @@ const createRealClient = () => {
                     const formData = new FormData();
                     formData.append('file', file);
                     const token = localStorage.getItem('auth_token');
-                    const res = await fetch(`${API_BASE_URL}/photos/upload`, {
+                    const uploadPath = `${API_BASE_URL}/photos/upload`;
+                    const res = await fetch(uploadPath, {
                         method: 'POST',
                         body: formData,
                         headers: {
@@ -115,4 +115,4 @@ const createRealClient = () => {
     };
 };
 
-export const base44 = useRealBackend ? createRealClient() : mockBase44;
+export const base44 = createRealClient();
