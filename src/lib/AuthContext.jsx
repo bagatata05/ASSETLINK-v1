@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
                     // Force refresh of token
                     const token = await firebaseUser.getIdToken(true);
                     localStorage.setItem('auth_token', token);
-                    
+
                     // Call backend to get user details/role
                     const currentUser = await base44.auth.me();
                     setUser(currentUser);
@@ -66,7 +66,6 @@ export const AuthProvider = ({ children }) => {
         try {
             await signOut(auth);
             localStorage.removeItem('auth_token');
-            localStorage.removeItem('assetlink_mock_current_user');
             setUser(null);
             setIsAuthenticated(false);
             // Optional: force reload to clear all states
