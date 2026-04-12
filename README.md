@@ -26,17 +26,16 @@ npm run dev
 The app opens at `http://localhost:5173`
 
 3. **Login with Demo Users**
-AssetLink runs in **mock mode** by default (no backend required). Login with any of these:
+Login with any of these (Initial seed data):
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | `admin@assetlink.ph` | (any) |
-| Teacher | `teacher@assetlink.ph` | (any) |
-| Principal | `principal@assetlink.ph` | (any) |
-| Supervisor | `supervisor@assetlink.ph` | (any) |
-| Maintenance | `maintenance@assetlink.ph` | (any) |
+| Admin | `deped.supervisor@assetlink.ph` | (your-pwd) |
+| Teacher | `teacher@baliwasan-shs.edu.ph` | (your-pwd) |
+| Principal | `principal@baliwasan-shs.edu.ph` | (your-pwd) |
+| Maintenance | `maintenance@baliwasan-shs.edu.ph` | (your-pwd) |
 
-**Mock data persists in localStorage** — close and reopen the browser to keep your data.
+**Real Backend Required** — Ensure your local MySQL server is running and the backend is started with `npm run dev` in the `/backend` directory.
 
 ---
 
@@ -83,9 +82,7 @@ src/
 │   ├── AuthContext.jsx         # Authentication & role state
 │   └── utils.js                # Utilities
 ├── api/
-│   ├── base44Client.js         # API client (real or mock)
-│   ├── mockBase44.js           # Mock backend (localStorage-based)
-│   └── seedData.js             # Demo data
+│   └── base44Client.js         # Unified API client (HTTP)
 └── App.jsx            # Router setup
 entities/              # Entity schemas (Base44 metadata)
 ```
@@ -130,7 +127,7 @@ entities/              # Entity schemas (Base44 metadata)
 - **Charts:** Recharts
 - **DnD:** hello-pangea/dnd (drag-and-drop)
 - **Notifications:** Sonner toasts
-- **Data:** localStorage (mock), Base44 SDK (production)
+- **Data:** MySQL (via Drizzle ORM), Base44 REST API
 
 ---
 
@@ -157,15 +154,6 @@ npm run dev
 npm run lint
 ```
 
-### Mock Data
-Edit `src/api/seedData.js` to add demo data. Changes appear on next refresh:
-```javascript
-// Add a new asset
-export const SEED_ASSETS = [
-  { id: 'ast_011', name: 'New Projector', ... },
-  ...
-];
-```
 
 ### Add a New Page
 1. Create `src/pages/NewPage.jsx`
@@ -183,17 +171,22 @@ npm run preview     # Preview production build
 
 ---
 
-## 📱 Backend Integration (Future)
+## 📱 Backend Integration
 
-Currently runs in **mock mode** (`VITE_BASE44_REAL_BACKEND=false`).
+This project requires the **AssetLink Backend** to be running:
 
-To connect to a real backend:
-1. Set `VITE_BASE44_REAL_BACKEND=true` in `.env`
-2. Configure `VITE_BASE44_APP_BASE_URL` and auth token
-3. Backend must implement endpoints in [API_SPECIFICATION.md](API_SPECIFICATION.md)
-4. Backend must enforce permissions in [PERMISSIONS.md](PERMISSIONS.md)
+1. **Setup Database**: Ensure MySQL is running and create a database named `assetlink`.
+2. **Configure Env**: Set `VITE_BASE44_REAL_BACKEND=true` in `.env`.
+3. **Start Backend**:
+   ```bash
+   cd backend
+   npm install
+   npm run db:push    # Initialize schema
+   npm run seed       # Populate initial data
+   npm run dev        # Start Express server
+   ```
 
-See [API_SPECIFICATION.md](API_SPECIFICATION.md) for complete backend requirements.
+The backend provides real persistence and enforces permissions for all endpoints.
 
 ---
 
