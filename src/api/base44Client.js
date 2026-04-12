@@ -1,6 +1,38 @@
 /// <reference types="vite/client" />
 const API_BASE_URL = '/api/v1';
 
+/**
+ * @typedef {Object} EntityManager
+ * @property {(sort?: string, limit?: number) => Promise<any[]>} list
+ * @property {(query?: Record<string, any>, sort?: string, limit?: number) => Promise<any[]>} filter
+ * @property {(id: string | number) => Promise<any>} get
+ * @property {(data: any) => Promise<any>} create
+ * @property {(id: string | number, data: any) => Promise<any>} update
+ * @property {(id: string | number) => Promise<any>} delete
+ */
+
+/**
+ * @typedef {Object} Base44Entities
+ * @property {EntityManager} RepairRequest
+ * @property {EntityManager} MaintenanceTask
+ * @property {EntityManager} Asset
+ * @property {EntityManager} School
+ * @property {EntityManager} User
+ */
+
+/**
+ * @typedef {Object} Base44Client
+ * @property {Object} auth
+ * @property {() => Promise<any>} auth.me
+ * @property {() => void} auth.logout
+ * @property {(callback: string) => void} auth.redirectToLogin
+ * @property {Base44Entities} entities
+ * @property {Object} integrations
+ * @property {Object} integrations.Core
+ * @property {(params: {file: File}) => Promise<{file_url: string}>} integrations.Core.UploadFile
+ * @property {(params: {to: string, subject: string, body: string}) => Promise<{success: boolean}>} integrations.Core.SendEmail
+ */
+
 const createRealClient = () => {
     const request = async (path, options = {}) => {
         const token = localStorage.getItem('auth_token');
@@ -37,7 +69,8 @@ const createRealClient = () => {
             'RepairRequest': '/repairs',
             'MaintenanceTask': '/maintenance-tasks',
             'Asset': '/assets',
-            'School': '/schools'
+            'School': '/schools',
+            'User': '/users'
         };
         const path = pathOverrides[entityName] || basePath;
 
@@ -115,4 +148,5 @@ const createRealClient = () => {
     };
 };
 
+/** @type {Base44Client} */
 export const base44 = createRealClient();
