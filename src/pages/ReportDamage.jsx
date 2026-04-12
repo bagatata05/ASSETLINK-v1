@@ -45,7 +45,15 @@ export default function ReportDamage() {
     }
 
     async function handleSubmit() {
-        if (!selectedAsset || !form.description) { toast.error('Please fill all required fields'); return; }
+        if (!selectedAsset || !form.description) { 
+            toast.error('Please fill all required fields'); 
+            return; 
+        }
+        
+        if (form.description.length < 10) {
+            toast.error('Description must be at least 10 characters long');
+            return;
+        }
         setSubmitting(true);
         let photo_url = null;
         try {
@@ -277,10 +285,15 @@ export default function ReportDamage() {
                             <Textarea
                                 rows={5}
                                 placeholder="Describe the issue in detail... (e.g. Screen is flickering, missing key on keyboard, etc.)"
-                                className="resize-none rounded-xl border-slate-200 focus:border-teal ring-offset-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                                className={`resize-none rounded-xl border-slate-200 focus:border-teal ring-offset-transparent focus-visible:ring-0 focus-visible:ring-offset-0 ${form.description.length > 0 && form.description.length < 10 ? 'border-orange-300 bg-orange-50/30' : ''}`}
                                 value={form.description}
                                 onChange={e => setForm({ ...form, description: e.target.value })}
                             />
+                            <div className="flex justify-end">
+                                <span className={`text-[10px] font-bold ${form.description.length < 10 ? 'text-orange-500' : 'text-teal'}`}>
+                                    {form.description.length} / 10 characters minimum
+                                </span>
+                            </div>
                         </div>
 
                         <div className="space-y-3">
