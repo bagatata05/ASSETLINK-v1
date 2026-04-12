@@ -29,13 +29,26 @@ export default function RepairRequests() {
     const [verificationFeedback, setVerificationFeedback] = useState('');
     const [scheduledStartDate, setScheduledStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [saving, setSaving] = useState(false);
+    const [maintenanceStaff, setMaintenanceStaff] = useState([]);
 
-    useEffect(() => { loadRequests(); }, []);
+    useEffect(() => { 
+        loadRequests(); 
+        loadMaintenanceStaff();
+    }, []);
 
     async function loadRequests() {
         const data = await base44.entities.RepairRequest.list('-created_date', 200);
         setRequests(data);
         setLoading(false);
+    }
+
+    async function loadMaintenanceStaff() {
+        try {
+            const data = await base44.entities.User.filter({ role: 'maintenance', workload: 'true' });
+            setMaintenanceStaff(data);
+        } catch (err) {
+            console.error('Failed to load maintenance staff:', err);
+        }
     }
 
     const filtered = requests.filter(r => {
@@ -46,44 +59,58 @@ export default function RepairRequests() {
     });
 
     async function updateStatus(id, status, extraData = {}) {
-        setSaving(true);
-        await base44.entities.RepairRequest.update(id, { status, ...extraData });
+        try {
+            setSaving(true);
+            await base44.entities.RepairRequest.update(id, { status, ...extraData });
 
-        // Notify the reporter by email on meaningful status changes
-        const req = requests.find(r => r.id === id);
-        if (req?.reported_by_email && ['Approved', 'Rejected', 'Escalated', 'Completed'].includes(status)) {
-            const statusMessages = {
-                Approved: `Your repair request for "${req.asset_name}" has been APPROVED by the principal and will be assigned to maintenance staff shortly.`,
-                Rejected: `Your repair request for "${req.asset_name}" has been REJECTED.${extraData.principal_notes ? `\n\nPrincipal's note: ${extraData.principal_notes}` : ''}`,
-                Escalated: `Your repair request for "${req.asset_name}" has been ESCALATED to a higher authority.${extraData.escalated_reason ? `\n\nReason: ${extraData.escalated_reason}` : ''}`,
-                Completed: `Great news! Your repair request for "${req.asset_name}" has been marked as COMPLETED.`,
-            };
-            await base44.integrations.Core.SendEmail({
-                to: req.reported_by_email,
-                subject: `Repair Request Update — ${req.asset_name} [${status}]`,
-                body: `Dear ${req.reported_by_name || 'Teacher'},\n\n${statusMessages[status]}\n\n📋 Request #: ${req.request_number || id}\n🏫 School: ${req.school_name || 'N/A'}\n🔧 Asset: ${req.asset_name}\n\nLog in to AssetLink to view the full details.\n\n— AssetLink Notification System`,
-            });
+            // Notify the reporter by email on meaningful status changes
+            const req = requests.find(r => r.id === id);
+            if (req?.reported_by_email && ['Approved', 'Rejected', 'Escalated', 'Completed'].includes(status)) {
+                const statusMessages = {
+                    Approved: `Your repair request for "${req.asset_name}" has been APPROVED by the principal and will be assigned to maintenance staff shortly.`,
+                    Rejected: `Your repair request for "${req.asset_name}" has been REJECTED.${extraData.principal_notes ? `\n\nPrincipal's note: ${extraData.principal_notes}` : ''}`,
+                    Escalated: `Your repair request for "${req.asset_name}" has been ESCALATED to a higher authority.${extraData.escalated_reason ? `\n\nReason: ${extraData.escalated_reason}` : ''}`,
+                    Completed: `Great news! Your repair request for "${req.asset_name}" has been marked as COMPLETED.`,
+                };
+                try {
+                    await base44.integrations.Core.SendEmail({
+                        to: req.reported_by_email,
+                        subject: `Repair Request Update — ${req.asset_name} [${status}]`,
+                        body: `Dear ${req.reported_by_name || 'Teacher'},\n\n${statusMessages[status]}\n\n📋 Request #: ${req.request_number || id}\n🏫 School: ${req.school_name || 'N/A'}\n🔧 Asset: ${req.asset_name}\n\nLog in to AssetLink to view the full details.\n\n— AssetLink Notification System`,
+                    });
+                } catch (emailError) {
+                    console.error('Email failed to send, but status was updated:', emailError);
+                }
+            }
+
+            toast.success(`Status updated to ${status}`);
+            setSelected(null);
+            loadRequests();
+        } catch (error) {
+            console.error('Update failed:', error);
+            toast.error(error.message || 'Failed to update status');
+        } finally {
+            setSaving(false);
         }
-
-        toast.success(`Status updated to ${status}`);
-        setSaving(false);
-        setSelected(null);
-        loadRequests();
     }
 
     async function handleApprove() {
+        const staff = maintenanceStaff.find(s => s.email === assignedTo) || { full_name: assignedTo, email: assignedTo };
         await updateStatus(selected.id, 'Approved', {
             principal_notes: notes,
-            assigned_to_name: assignedTo,
+            assigned_to_name: staff.full_name,
+            assigned_to_email: staff.email,
         });
     }
 
     async function handleAssign() {
         const slaDeadline = calculateDeadline(scheduledStartDate, selected.priority);
         
+        const staff = maintenanceStaff.find(s => s.email === assignedTo) || { full_name: assignedTo, email: assignedTo };
+        
         await updateStatus(selected.id, 'In Progress', {
-            assigned_to_name: assignedTo,
-            assigned_to_email: assignedTo,
+            assigned_to_name: staff.full_name,
+            assigned_to_email: staff.email,
             scheduled_start_date: scheduledStartDate,
             sla_deadline: slaDeadline.toISOString(),
         });
@@ -94,8 +121,8 @@ export default function RepairRequests() {
             request_number: selected.request_number,
             asset_name: selected.asset_name,
             school_name: selected.school_name,
-            assigned_to_email: assignedTo,
-            assigned_to_name: assignedTo,
+            assigned_to_email: staff.email,
+            assigned_to_name: staff.full_name,
             priority: selected.priority,
             status: 'Assigned',
             scheduled_start_date: scheduledStartDate,
@@ -221,7 +248,11 @@ export default function RepairRequests() {
                     ) : [...filtered].sort((a, b) => (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4)).map(req => (
                         <div
                             key={req.id}
-                            onClick={() => { setSelected(req); setNotes(''); setAssignedTo(req.assigned_to_name || ''); }}
+                            onClick={() => { 
+                                setSelected(req); 
+                                setNotes(''); 
+                                setAssignedTo(req.assigned_to_email || ''); 
+                            }}
                             className="bg-card rounded-2xl border border-border p-4 hover:shadow-md transition-all cursor-pointer group"
                         >
                             <div className="flex items-start gap-4">
@@ -285,8 +316,28 @@ export default function RepairRequests() {
                             <div className="space-y-3 pt-2 border-t border-border">
                                 {(role === 'principal' || role === 'admin') && selected.status === 'Pending' && (
                                     <div className="space-y-2">
-                                        <Label className="text-xs">Assign To / Notes</Label>
-                                        <Input value={assignedTo} onChange={e => setAssignedTo(e.target.value)} placeholder="Maintenance staff name" />
+                                        <Label className="text-xs">Assign To Maintenance</Label>
+                                        <Select value={assignedTo} onValueChange={setAssignedTo}>
+                                            <SelectTrigger className="w-full bg-white">
+                                                <SelectValue placeholder="Select maintenance staff..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {maintenanceStaff.length === 0 ? (
+                                                    <SelectItem value="none" disabled>No maintenance staff found</SelectItem>
+                                                ) : (
+                                                    maintenanceStaff.map(staff => (
+                                                        <SelectItem key={staff.email} value={staff.email}>
+                                                            <div className="flex items-center justify-between gap-4 w-full">
+                                                                <span>{staff.full_name}</span>
+                                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${staff.active_tasks > 3 ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                                                    {staff.active_tasks} Active
+                                                                </span>
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))
+                                                )}
+                                            </SelectContent>
+                                        </Select>
                                         <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add notes..." rows={2} />
                                         <div className="flex gap-2">
                                             <Button onClick={handleApprove} disabled={saving} className="flex-1 bg-teal hover:bg-teal/90 text-white text-sm">
@@ -302,8 +353,19 @@ export default function RepairRequests() {
                                     <div className="space-y-3">
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-1.5">
-                                                <Label className="text-xs">Assign To Maintenance</Label>
-                                                <Input value={assignedTo} onChange={e => setAssignedTo(e.target.value)} placeholder="Name or email" />
+                                                <Label className="text-xs">Update Assignment</Label>
+                                                <Select value={assignedTo} onValueChange={setAssignedTo}>
+                                                    <SelectTrigger className="w-full bg-white">
+                                                        <SelectValue placeholder="Select staff..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {maintenanceStaff.map(staff => (
+                                                            <SelectItem key={staff.email} value={staff.email}>
+                                                                {staff.full_name} ({staff.active_tasks})
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                             <div className="space-y-1.5">
                                                 <Label className="text-xs">Target Start Date</Label>
