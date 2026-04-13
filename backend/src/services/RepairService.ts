@@ -66,20 +66,28 @@ export class RepairService {
 
         const result = await repairRepository.update(id, transformedData);
 
-        // Sync with Maintenance Tasks if assigned and In Progress
-        if (transformedData.status === 'In Progress' || (existing.status === 'In Progress' && transformedData.assigned_to_email)) {
-            console.log('[RepairService] Syncing task for request:', id);
+        // Sync with Maintenance Tasks if assigned and Approved or In Progress
+        const status = transformedData.status || existing.status;
+        const assignedEmail = transformedData.assigned_to_email || existing.assigned_to_email;
+
+        if (assignedEmail && ['Approved', 'In Progress'].includes(status)) {
+            console.log(`[RepairService] Syncing task for request: ${id} [Status: ${status}]`);
+            
+            // Map Repair Request Status to Maintenance Task Status
+            const taskStatus = status === 'Approved' ? 'Assigned' : 'In Progress';
+
             const taskData = {
                 repair_request_id: id,
                 request_number: existing.request_number,
                 asset_name: transformedData.asset_name || existing.asset_name,
-                school_id: existing.school_id,
-                school_name: existing.school_name,
-                assigned_to_email: transformedData.assigned_to_email || existing.assigned_to_email,
+                school_id: transformedData.school_id || existing.school_id,
+                school_name: transformedData.school_name || existing.school_name,
+                assigned_to_email: assignedEmail,
                 assigned_to_name: transformedData.assigned_to_name || existing.assigned_to_name,
-                status: 'In Progress', // Map 'In Progress' from repair to maintenance task status
+                status: taskStatus,
                 priority: transformedData.priority || existing.priority,
                 start_date: transformedData.scheduled_start_date || existing.scheduled_start_date,
+                created_date: new Date(),
             };
 
             const existingTask = await taskRepository.findByRepairRequestId(id);
@@ -110,6 +118,7 @@ export class RepairService {
     }
 
     async updateStatus(id: string, status: string, notes: string, user: any) {
+        // Use the generic updateRequest logic to ensure sync happens
         const updateData: any = { status };
         
         if (user.role === 'principal') {
@@ -118,19 +127,7 @@ export class RepairService {
             updateData.maintenance_notes = notes;
         }
 
-        const result = await repairRepository.update(id, updateData);
-
-        await auditRepository.create({
-            id: `audit_${Date.now()}`,
-            user_id: user.uid,
-            user_name: user.full_name,
-            action: 'UPDATE_REPAIR_STATUS',
-            entity_type: 'RepairRequest',
-            entity_id: id,
-            details: `Updated status to ${status}. Notes: ${notes}`
-        });
-
-        return result;
+        return await this.updateRequest(id, updateData, user);
     }
 }
 
