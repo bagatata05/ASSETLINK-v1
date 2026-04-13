@@ -57,9 +57,14 @@ export default function Tasks() {
             updateData.status = 'Pending Teacher Verification';
         }
         if (selected.repair_request_id) {
-            // Update repair request with maintenance notes
-            const repairUpdate = { maintenance_notes: form.notes };
-            // Keep repair request in "In Progress" state until teacher verifies
+            // Update repair request with maintenance notes and change status to Pending Verification
+            const repairUpdate = { 
+                maintenance_notes: form.notes,
+                status: form.status === 'Completed' ? 'Pending Verification' : undefined 
+            };
+            // Remove undefined status if not completing
+            if (!repairUpdate.status) delete repairUpdate.status;
+            
             await base44.entities.RepairRequest.update(selected.repair_request_id, repairUpdate);
 
             // Notify the teacher who filed the request
