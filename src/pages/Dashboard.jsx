@@ -48,8 +48,15 @@ export default function Dashboard() {
         load();
     }, [role, currentUser]);
 
+    useEffect(() => {
+        if (!loading) {
+            console.log('[Dashboard] Current User:', currentUser?.email, currentUser?.role);
+            console.log('[Dashboard] Total Tasks Fetched:', tasks.length);
+        }
+    }, [loading, tasks, currentUser]);
+
     const myTasks = tasks.filter(t =>
-        t.assigned_to_email === currentUser?.email ||
+        t.assigned_to_email?.toLowerCase() === currentUser?.email?.toLowerCase() ||
         t.assigned_to_name?.toLowerCase().includes(currentUser?.full_name?.toLowerCase() || '')
     );
 
