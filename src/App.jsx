@@ -22,7 +22,7 @@ import SupervisorOversight from './pages/SupervisorOversight';
 import RoleRoute from './lib/RoleRoute';
 
 const AuthenticatedApp = () => {
-    const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
+    const { isAuthenticated, isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
 
     // Show loading spinner while checking app public settings or auth
     if (isLoadingPublicSettings || isLoadingAuth) {
@@ -34,13 +34,13 @@ const AuthenticatedApp = () => {
     }
 
     // Handle authentication errors
+    // Handle authentication errors
     if (authError) {
         if (authError.type === 'user_not_registered') {
             return <UserNotRegisteredError />;
         }
     }
 
-    const { isAuthenticated } = useAuth();
     if (!isAuthenticated) {
         return (
             <Routes>
