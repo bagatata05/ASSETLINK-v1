@@ -1,5 +1,5 @@
 import { userRepository, repairRepository } from '../repositories';
-import { eq, and, count } from 'drizzle-orm';
+import { eq, and, or, count } from 'drizzle-orm';
 import { repairRequests } from '../db/schema';
 import { db } from '../db';
 
@@ -17,8 +17,9 @@ export class UserService {
         })
         .from(repairRequests)
         .where(
-            and(
-                eq(repairRequests.status, 'In Progress')
+            or(
+                eq(repairRequests.status, 'In Progress'),
+                eq(repairRequests.status, 'Approved')
             )
         )
         .groupBy(repairRequests.assigned_to_email);
