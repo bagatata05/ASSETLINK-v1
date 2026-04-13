@@ -114,22 +114,6 @@ export default function RepairRequests() {
             scheduled_start_date: scheduledStartDate,
             sla_deadline: slaDeadline.toISOString(),
         });
-        
-        // Create maintenance task
-        await base44.entities.MaintenanceTask.create({
-            repair_request_id: selected.id,
-            request_number: selected.request_number,
-            asset_name: selected.asset_name,
-            school_name: selected.school_name,
-            assigned_to_email: staff.email,
-            assigned_to_name: staff.full_name,
-            priority: selected.priority,
-            status: 'Assigned',
-            scheduled_start_date: scheduledStartDate,
-            start_date: scheduledStartDate, // Initially same as scheduled
-            sla_deadline: slaDeadline.toISOString(),
-            reschedule_count: 0
-        });
     }
 
     async function handleConfirmComplete() {
@@ -295,7 +279,7 @@ export default function RepairRequests() {
                             <div className="grid grid-cols-2 gap-3 text-sm">
                                 <div><p className="text-muted-foreground text-xs">Asset</p><p className="font-medium">{selected.asset_name}</p></div>
                                 <div><p className="text-muted-foreground text-xs">Code</p><p className="font-medium">{selected.asset_code || '—'}</p></div>
-                                <div><p className="text-muted-foreground text-xs">School</p><p className="font-medium">{selected.school_name || '—'}</p></div>
+                                <div><p className="text-muted-foreground text-xs">School</p><p className="font-medium text-amber-600">{selected.school_name || selected.school_id || '—'}</p></div>
                                 <div><p className="text-muted-foreground text-xs">Reported By</p><p className="font-medium">{selected.reported_by_name || selected.reported_by_email || '—'}</p></div>
                             </div>
                             <div>
@@ -391,7 +375,7 @@ export default function RepairRequests() {
                                         </Button>
                                     </div>
                                 )}
-                                {(role === 'teacher' || role === 'admin') && selected.status === 'In Progress' && (
+                                {(role === 'teacher' || role === 'admin') && (selected.status === 'In Progress' || selected.status === 'Pending Verification') && (
                                     <div className="space-y-2">
                                         <Label className="text-xs">Verify Repair Completion</Label>
                                         <p className="text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded-lg p-2">
