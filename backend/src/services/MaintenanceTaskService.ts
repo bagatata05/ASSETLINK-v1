@@ -32,7 +32,17 @@ export class MaintenanceTaskService {
     }
 
     async updateTask(id: string, data: any, user: any) {
-        const result = await taskRepository.update(id, data);
+        // Transform date strings to real Date objects
+        const transformedData = { ...data };
+        const dateFields = ['start_date', 'completed_date', 'verified_date'];
+        
+        dateFields.forEach(field => {
+            if (transformedData[field] && typeof transformedData[field] === 'string') {
+                transformedData[field] = new Date(transformedData[field]);
+            }
+        });
+
+        const result = await taskRepository.update(id, transformedData);
         
         await auditRepository.create({
             id: `audit_${Date.now()}`,
@@ -41,7 +51,7 @@ export class MaintenanceTaskService {
             action: 'UPDATE_TASK',
             entity_type: 'MaintenanceTask',
             entity_id: id,
-            details: `Updated task ${id}`
+            details: `Updated task ${id}. Fields: ${Object.keys(data).join(', ')}`
         });
 
         return result;
