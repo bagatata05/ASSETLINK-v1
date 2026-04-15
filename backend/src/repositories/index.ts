@@ -29,6 +29,9 @@ export class RepairRepository extends BaseRepository<typeof repairRequests> {
     async findByStatus(status: string) {
         return await db.select().from(repairRequests).where(eq(repairRequests.status, status));
     }
+    async findByAssetId(assetId: string) {
+        return await db.select().from(repairRequests).where(eq(repairRequests.asset_id, assetId));
+    }
 }
 
 export class TaskRepository extends BaseRepository<typeof maintenanceTasks> {
