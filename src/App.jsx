@@ -57,7 +57,7 @@ const AuthenticatedApp = () => {
                 <Route path="/" element={<Dashboard />} />
                 
                 <Route path="/assets" element={
-                    <RoleRoute allowedRoles={['admin', 'teacher', 'principal', 'supervisor']}>
+                    <RoleRoute allowedRoles={['admin', 'teacher', 'principal']}>
                         <Assets />
                     </RoleRoute>
                 } />
@@ -69,13 +69,13 @@ const AuthenticatedApp = () => {
                 } />
                 
                 <Route path="/report-damage" element={
-                    <RoleRoute allowedRoles={['admin', 'teacher']}>
+                    <RoleRoute allowedRoles={['teacher']}>
                         <ReportDamage />
                     </RoleRoute>
                 } />
                 
                 <Route path="/tasks" element={
-                    <RoleRoute allowedRoles={['admin', 'maintenance']}>
+                    <RoleRoute allowedRoles={['maintenance']}>
                         <Tasks />
                     </RoleRoute>
                 } />
@@ -93,7 +93,7 @@ const AuthenticatedApp = () => {
                 } />
                 
                 <Route path="/calendar" element={
-                    <RoleRoute allowedRoles={['admin', 'maintenance', 'principal']}>
+                    <RoleRoute allowedRoles={['maintenance', 'principal']}>
                         <MaintenanceCalendar />
                     </RoleRoute>
                 } />
