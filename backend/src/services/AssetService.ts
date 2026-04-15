@@ -1,4 +1,4 @@
-import { assetRepository } from '../repositories';
+import { assetRepository, repairRepository } from '../repositories';
 
 export class AssetService {
     async getAllAssets() {
@@ -20,7 +20,6 @@ export class AssetService {
     }
 
     async createAsset(data: any) {
-        // Business logic: check code uniqueness etc. (DB Unique constraint handles this too)
         return await assetRepository.create(data);
     }
 
@@ -29,6 +28,13 @@ export class AssetService {
     }
 
     async deleteAsset(id: string) {
+        const linkedRepairs = await repairRepository.findByAssetId(id);
+        if (linkedRepairs && linkedRepairs.length > 0) {
+            throw { 
+                status: 400, 
+                message: `Cannot delete asset. It has ${linkedRepairs.length} linked repair request(s). Please resolve or remove linked requests first.` 
+            };
+        }
         return await assetRepository.delete(id);
     }
 }
