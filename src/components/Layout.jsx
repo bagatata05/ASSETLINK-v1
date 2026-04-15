@@ -11,13 +11,13 @@ import BottomNav from './BottomNav';
 
 const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'teacher', 'principal', 'maintenance', 'supervisor'] },
-    { path: '/assets', label: 'Assets', icon: Package, roles: ['admin', 'teacher', 'principal', 'supervisor'] },
+    { path: '/assets', label: 'Assets', icon: Package, roles: ['admin', 'teacher', 'principal'] },
     { path: '/repair-requests', label: 'Repair Requests', icon: AlertTriangle, roles: ['admin', 'teacher', 'principal', 'supervisor'] },
-    { path: '/report-damage', label: 'Report Damage', icon: AlertTriangle, roles: ['admin', 'teacher'] },
-    { path: '/tasks', label: 'My Tasks', icon: Wrench, roles: ['admin', 'maintenance'] },
+    { path: '/report-damage', label: 'Report Damage', icon: AlertTriangle, roles: ['teacher'] },
+    { path: '/tasks', label: 'My Tasks', icon: Wrench, roles: ['maintenance'] },
     { path: '/analytics', label: 'Analytics', icon: BarChart3, roles: ['admin', 'principal'] },
     { path: '/schools', label: 'Schools', icon: School, roles: ['admin'] },
-    { path: '/calendar', label: 'Calendar', icon: CalendarDays, roles: ['admin', 'maintenance', 'principal'] },
+    { path: '/calendar', label: 'Calendar', icon: CalendarDays, roles: ['maintenance', 'principal'] },
     { path: '/supervisor-oversight', label: 'Oversight', icon: ShieldAlert, roles: ['admin', 'supervisor'] },
 ];
 
@@ -58,10 +58,12 @@ export default function Layout() {
 
                     {/* Role badge */}
                     <div className="px-6 py-3">
-                        <span className="text-xs font-semibold uppercase tracking-widest text-teal px-2 py-1 bg-teal/10 rounded-full">
-                            {role === 'admin' ? 'DepEd Supervisor' : 
+                        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-teal px-3 py-1 bg-teal/10 rounded-full border border-teal/20">
+                            {role === 'admin' ? 'DepEd Supervisor (Admin)' : 
                              role === 'supervisor' ? 'Barangay Official' : 
-                             role}
+                             role === 'principal' ? 'School Principal' :
+                             role === 'maintenance' ? 'Maintenance Staff' :
+                             'Teacher'}
                         </span>
                     </div>
 
