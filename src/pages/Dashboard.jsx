@@ -300,7 +300,7 @@ export default function Dashboard() {
                             : `Asset management for ${currentUser?.school_name || 'Baliwasan Senior High School'}`}
                     </p>
                 </div>
-                {(role === 'teacher' || role === 'admin') && (
+                {role === 'teacher' && (
                     <Link to="/report-damage">
                         <Button className="bg-teal hover:bg-teal/90 text-white gap-2">
                             <Plus className="w-4 h-4" /> Report Damage
