@@ -9,10 +9,10 @@ import { useAuth } from '@/lib/AuthContext';
 
 const bottomNavItems = [
     { id: 'home', path: '/', label: 'Home', icon: LayoutDashboard, roles: ['admin', 'teacher', 'principal', 'maintenance', 'supervisor'] },
-    { id: 'assets', path: '/assets', label: 'Assets', icon: Search, roles: ['admin', 'teacher', 'principal', 'supervisor'] },
+    { id: 'assets', path: '/assets', label: 'Assets', icon: Search, roles: ['admin', 'teacher', 'principal'] },
     { id: 'requests', path: '/repair-requests', label: 'Requests', icon: AlertTriangle, roles: ['admin', 'teacher', 'principal', 'supervisor'] },
     { id: 'tasks', path: '/tasks', label: 'Tasks', icon: Wrench, roles: ['maintenance'] },
-    { id: 'report', path: '/report-damage', label: 'Report', icon: PlusCircle, roles: ['teacher', 'admin'] },
+    { id: 'report', path: '/report-damage', label: 'Report', icon: PlusCircle, roles: ['teacher'] },
     { id: 'oversight', path: '/supervisor-oversight', label: 'Oversight', icon: ShieldAlert, roles: ['admin', 'supervisor'] },
     { id: 'analytics', path: '/analytics', label: 'Stats', icon: BarChart3, roles: ['principal'] },
 ];
