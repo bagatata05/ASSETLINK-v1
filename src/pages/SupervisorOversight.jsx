@@ -121,12 +121,12 @@ export default function SupervisorOversight() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-foreground">
-                        {role === 'admin' ? 'Regional Oversight' : 'Community Monitoring'} Dashboard
+                        {role === 'admin' ? 'Regional Oversight Dashboard' : 'Public Transparency & Watchdog Board'}
                     </h1>
                     <p className="text-muted-foreground text-sm mt-1">
                         {role === 'admin' 
                             ? 'Multi-school repair monitoring & regional escalation management' 
-                            : `Monitoring asset condition for ${currentUser?.school_name || 'Baliwasan Senior High School'}`}
+                            : 'Community monitoring of school asset health and repair accountability'}
                     </p>
                 </div>
             </div>
@@ -240,17 +240,21 @@ export default function SupervisorOversight() {
                 </ResponsiveContainer>
             </div>
 
-            {/* Costs by School */}
-            {schoolCosts.length > 0 && (
-                <div className="bg-card rounded-2xl border border-border p-6">
-                    <h3 className="font-semibold text-foreground mb-4">Resource Allocation (Estimated Costs)</h3>
+            {/* Costs by School - Only for Admin */}
+            {role === 'admin' && schoolCosts.length > 0 && (
+                <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
+                    <h3 className="font-semibold text-foreground mb-4">Regional Resource Allocation (Estimated Costs)</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={schoolCosts} layout="vertical">
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis type="number" />
-                            <YAxis dataKey="name" type="category" width={120} fontSize={11} />
-                            <Tooltip formatter={(value) => `PHP ${value}`} />
-                            <Bar dataKey="cost" fill="#0d9488" />
+                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                            <XAxis type="number" hide />
+                            <YAxis dataKey="name" type="category" width={140} fontSize={11} tick={{fill: '#64748b'}} />
+                            <Tooltip 
+                                cursor={{fill: 'rgba(13, 148, 136, 0.05)'}}
+                                contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                                formatter={(value) => [`PHP ${value.toLocaleString()}`, 'Estimated Cost']} 
+                            />
+                            <Bar dataKey="cost" fill="#0d9488" radius={[0, 4, 4, 0]} barSize={20} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
