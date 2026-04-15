@@ -27,6 +27,7 @@ export default function Assets() {
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ name: '', asset_code: '', category: 'Furniture', condition: 'Good', location: '', school_id: '', school_name: '', description: '' });
     const [saving, setSaving] = useState(false);
+    const [schools, setSchools] = useState([]);
     const [selected, setSelected] = useState(new Set());
     const [selectMode, setSelectMode] = useState(false);
     const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -34,6 +35,12 @@ export default function Assets() {
     const qrSheetRef = useRef(null);
 
     useEffect(() => { loadAssets(); }, []);
+
+    useEffect(() => {
+        if (role === 'admin') {
+            base44.entities.School.list('-created_date', 100).then(setSchools);
+        }
+    }, [role]);
 
     function toggleSelect(id) {
         setSelected(prev => {
@@ -103,17 +110,24 @@ export default function Assets() {
 
     function openCreate() {
         setEditing(null);
+        const userSchoolId = currentUser?.school_id || '';
+        const userSchoolName = currentUser?.school_name || '';
         setForm({ 
             name: '', 
             asset_code: '', 
             category: 'Furniture', 
             condition: 'Good', 
             location: '', 
-            school_id: currentUser?.school_id || '',
-            school_name: currentUser?.school_name || '', 
+            school_id: userSchoolId,
+            school_name: userSchoolName, 
             description: '' 
         });
         setShowModal(true);
+    }
+
+    function handleSchoolChange(schoolId) {
+        const school = schools.find(s => s.id === schoolId);
+        setForm({ ...form, school_id: schoolId, school_name: school?.name || '' });
     }
 
     function openEdit(asset) {
@@ -148,9 +162,14 @@ export default function Assets() {
 
     async function handleDelete(id) {
         if (!confirm('Delete this asset?')) return;
-        await base44.entities.Asset.delete(id);
-        toast.success('Asset deleted');
-        loadAssets();
+        try {
+            await base44.entities.Asset.delete(id);
+            toast.success('Asset deleted');
+            loadAssets();
+        } catch (error) {
+            console.error('Delete error:', error);
+            toast.error(error.message || 'Failed to delete asset');
+        }
     }
 
     return (
@@ -326,6 +345,17 @@ export default function Assets() {
                                     <SelectContent>{CONDITIONS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
+                            {role === 'admin' && (
+                                <div className="space-y-1.5 col-span-2">
+                                    <Label>School</Label>
+                                    <Select value={form.school_id} onValueChange={handleSchoolChange}>
+                                        <SelectTrigger><SelectValue placeholder="Select school" /></SelectTrigger>
+                                        <SelectContent>
+                                            {schools.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                             <div className="space-y-1.5 col-span-2">
                                 <Label>Description</Label>
                                 <Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Optional notes..." />
